@@ -1,0 +1,168 @@
+# Tests en cada push, y release automática al llegar commits a main.
+#
+# En main, la versión nueva se calcula con los mensajes de Conventional
+# Commits (ver .github/scripts/next-version.sh): feat → minor, fix → patch,
+# tipo! o BREAKING CHANGE → major. Solo docs/chore/ci → no se publica nada.
+# El pipeline guarda la versión en manifest.json, crea la etiqueta y publica
+# la Release.
+
+name: CI y release
+
+on:
+  push:
+    branches: ["**"]
+  # Botón "Run workflow" en la pestaña Actions, para lanzarlo a mano.
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      # Si falla un sistema, los demás siguen: así se ve todo lo que falla.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # Bash también en Windows (Git Bash): los mismos comandos en todos.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: helper/go.mod
+          cache-dependency-path: helper/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      - name: Tests del helper
+        working-directory: helper
+        run: |
+          go vet ./...
+          go test ./...
+
+      # En Windows, el test de extremo a extremo del plugin usa este binario.
+      - name: Compilar el helper
+        run: bash helper/build.sh
+
+      - name: Tests del plugin
+        working-directory: plugin
+        run: |
+          npm ci
+          npm test
+
+  version:
+    name: Calcular la versión
+    # Solo en main, y solo si los tests pasaron en los tres sistemas.
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Todo el historial y las etiquetas: hacen falta para saber qué
+          # commits hay desde la última versión.
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - id: next
+        run: |
+          version="$(bash .github/scripts/next-version.sh)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Versión nueva: ${version:-ninguna (solo commits sin versión: docs, chore, ci...)}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: Publicar ${{ needs.version.outputs.version }}
+    needs: version
+    if: needs.version.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # para subir el commit de versión, la etiqueta y la Release
+    # Si llegan dos merges seguidos, las releases se hacen una detrás de otra.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: helper/go.mod
+          cache-dependency-path: helper/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      # Primero en local: el plugin copia manifest.json al compilar, y tiene
+      # que llevar ya la versión nueva.
+      - name: Poner la versión en manifest.json
+        run: |
+          node -e '
+            const fs = require("fs");
+            const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+            manifest.version = process.env.VERSION;
+            fs.writeFileSync("manifest.json", JSON.stringify(manifest, null, 2) + "\n");
+          '
+
+      - name: Compilar el helper para los 6 sistemas
+        env:
+          TARGETS: windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
+        run: bash helper/build.sh "$VERSION"
+
+      # Genera plugin/build/ con main.js, manifest.json, styles.css y los
+      # 6 binarios en bin/.
+      - name: Compilar el plugin
+        working-directory: plugin
+        run: |
+          npm ci
+          npm run build
+
+      # Un zip con la carpeta del plugin lista para copiar a .obsidian/plugins/.
+      - name: Empaquetar
+        run: |
+          mkdir release
+          cp -r plugin/build release/termsidian
+          cd release
+          zip -r "termsidian-$VERSION.zip" termsidian
+
+      # Solo cuando todo compiló: así no queda una etiqueta sin Release.
+      # Lo que se sube con github.token no vuelve a lanzar el workflow, así
+      # que este commit no provoca otra release.
+      - name: Guardar la versión y crear la etiqueta
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet manifest.json; then
+            git commit -m "chore(release): $VERSION" manifest.json
+            git push origin HEAD:main
+          fi
+          git tag "$VERSION"
+          git push origin "$VERSION"
+
+      # gh viene instalado en los runners de GitHub; github.token es un token
+      # temporal que GitHub crea para cada ejecución.
+      - name: Crear la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --generate-notes \
+            plugin/build/main.js \
+            plugin/build/manifest.json \
+            plugin/build/styles.css \
+            helper/dist/termsidian-pty-* \
+            helper/dist/checksums.txt \
+            "release/termsidian-$VERSION.zip"

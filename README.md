@@ -1,5 +1,7 @@
 # Termsidian
 
+[![CI y release](https://github.com/inusui/obsidian-termsidian/actions/workflows/release.yml/badge.svg)](https://github.com/inusui/obsidian-termsidian/actions/workflows/release.yml)
+
 Terminal real en la barra lateral derecha de Obsidian, con el shell de tu sistema (PowerShell, cmd, bash, zsh…).
 
 Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`, abre una terminal del sistema (ConPTY en Windows, PTY en macOS y Linux), y el plugin la dibuja con [xterm.js](https://xtermjs.org/).
@@ -32,10 +34,27 @@ Al cerrar el panel se cierran el shell y todo lo que corría dentro de él. Los 
 
 **Requisitos:** Obsidian de escritorio 1.7.2 o superior, con los complementos de la comunidad activados (modo restringido desactivado).
 
-1. Compila el helper y el plugin, como se explica en [Compilar](#compilar). El resultado queda en `plugin/build/`.
-2. Copia el contenido de `plugin/build/` a `<tu-vault>/.obsidian/plugins/termsidian/`. `<tu-vault>` es la carpeta que contiene `.obsidian`.
+`<tu-vault>` es la carpeta que contiene `.obsidian`. En Git Bash, las rutas de Windows se escriben con barras normales y la unidad en minúscula: `C:\Users\Ana\Notas` se escribe `/c/Users/Ana/Notas`.
 
-   Desde la raíz del repositorio, en Git Bash (o en la terminal de macOS o Linux):
+### Opción A: desde una Release (sin compilar)
+
+1. En la página de [Releases](https://github.com/inusui/obsidian-termsidian/releases), descarga `termsidian-<versión>.zip`. Trae el plugin y el helper para los 6 sistemas.
+2. Descomprímelo dentro de `<tu-vault>/.obsidian/plugins/`. En Windows, basta con clic derecho → **Extraer todo**. Tiene que quedar una carpeta `termsidian` dentro de `plugins`.
+
+   Con Git Bash, macOS o Linux (cambia la versión por la que quieras):
+
+   ```bash
+   cd "<tu-vault>/.obsidian/plugins"
+   curl -LO https://github.com/inusui/obsidian-termsidian/releases/download/0.1.0/termsidian-0.1.0.zip
+   unzip -o termsidian-0.1.0.zip && rm termsidian-0.1.0.zip
+   ```
+
+3. Actívalo en Obsidian, como se explica en el último paso de la opción B.
+
+### Opción B: compilando tú
+
+1. Compila el helper y el plugin, como se explica en [Compilar](#compilar). El resultado queda en `plugin/build/`.
+2. Copia el contenido de `plugin/build/` a `<tu-vault>/.obsidian/plugins/termsidian/`. Desde la raíz del repositorio, en Git Bash (o en la terminal de macOS o Linux):
 
    ```bash
    dest="<tu-vault>/.obsidian/plugins/termsidian"
@@ -43,11 +62,9 @@ Al cerrar el panel se cierran el shell y todo lo que corría dentro de él. Los 
    cp -r plugin/build/. "$dest/"
    ```
 
-   En Git Bash, las rutas de Windows se escriben con barras normales y la unidad en minúscula: `C:\Users\Ana\Notas` se escribe `/c/Users/Ana/Notas`.
-
 3. En Obsidian, ve a **Ajustes → Complementos de la comunidad**, pulsa el botón de recargar junto a "Complementos instalados" y activa **Termsidian**.
 
-La carpeta del plugin queda así:
+La carpeta del plugin queda así. Con la opción A, `bin/` trae además los binarios de macOS y Linux:
 
 ```
 <tu-vault>/.obsidian/plugins/termsidian/
@@ -62,10 +79,10 @@ La carpeta del plugin queda así:
 ### Actualizar
 
 1. Desactiva el plugin, o cierra Obsidian. Windows no deja reemplazar un `.exe` que está en uso.
-2. Vuelve a compilar y a copiar, con los mismos comandos de arriba.
+2. Instala la versión nueva con cualquiera de las dos opciones. Los archivos se sobrescriben.
 3. Activa el plugin otra vez.
 
-> **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** la carpeta `bin/` también se sincroniza. En tus otros equipos Windows funciona sin instalar nada. En macOS o Linux hace falta el binario de ese sistema; mira [Otros sistemas](#otros-sistemas).
+> **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** la carpeta `bin/` también se sincroniza. Si instalas desde una Release, el plugin funciona en todos tus equipos, sean Windows, macOS o Linux. Si compilas tú, solo trae los binarios de Windows; mira [Otros sistemas](#otros-sistemas).
 
 ## Compilar
 
@@ -165,6 +182,63 @@ npm test
 
 Estos tests comprueban que los mensajes se reconstruyen aunque lleguen partidos en trozos, y que el formato es idéntico byte a byte al de Go. Uno de ellos habla con el binario de Go de verdad; se omite si `helper/dist/` no está compilado.
 
+## Integración continua y releases
+
+GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace dos cosas:
+
+- **En cada push, a cualquier rama,** ejecuta los tests del helper y del plugin en Windows, macOS y Linux. El resultado se ve en la pestaña **Actions** del repositorio y en la insignia del principio de este README.
+- **Cuando llegan commits a `main`** (por ejemplo, al hacer merge de `Dev`), y si los tests pasan en los tres sistemas, publica una versión nueva sin que hagas nada más: calcula el número, lo guarda en `manifest.json`, crea la etiqueta y publica una Release con:
+
+| Archivo | Qué es |
+|---|---|
+| `termsidian-<versión>.zip` | La carpeta del plugin completa, lista para descomprimir en `.obsidian/plugins/` |
+| `main.js`, `manifest.json`, `styles.css` | El plugin, sin el helper |
+| `termsidian-pty-<sistema>-<arquitectura>` | El helper para cada sistema |
+| `checksums.txt` | Hash SHA-256 de cada binario del helper |
+
+Los binarios de una Release los compila siempre GitHub, nunca un equipo personal.
+
+### Cómo se decide la versión
+
+El número sale de los mensajes de commit (formato [Conventional Commits](https://www.conventionalcommits.org/es/)) que hay desde la última versión:
+
+| Commits desde la última versión | Versión nueva |
+|---|---|
+| Alguno con `!` tras el tipo (`feat!:`) o con `BREAKING CHANGE:` en el mensaje | major: `0.2.3` → `1.0.0` |
+| Alguno `feat:` | minor: `0.2.3` → `0.3.0` |
+| Alguno `fix:` o `perf:` | patch: `0.2.3` → `0.2.4` |
+| Solo `docs:`, `chore:`, `ci:`, `test:`, `refactor:`… | no se publica versión |
+
+Casos especiales:
+
+- **La primera vez,** sin ninguna etiqueta, se publica la versión que ya tiene `manifest.json`.
+- **Para elegir un número concreto,** ponlo tú en `manifest.json`, por ejemplo `1.0.0`. Si es mayor que la última versión publicada, se usa ese.
+- **Si haces squash merge,** solo cuenta el mensaje del commit resultante. Ponle un título con el formato correcto, por ejemplo `feat: …`.
+
+Para ver qué versión saldría con los commits actuales, desde la raíz del repositorio:
+
+```bash
+bash .github/scripts/next-version.sh
+```
+
+### Publicar una versión
+
+1. Haz merge de tu rama en `main` y súbelo:
+
+   ```bash
+   git switch main && git merge Dev && git push
+   ```
+
+2. Sigue el progreso en la pestaña **Actions**. Al terminar, la Release aparece en la página de Releases.
+
+3. El pipeline sube a `main` un commit `chore(release): <versión>` con el `manifest.json` actualizado. Tráelo a tu rama de trabajo para que las dos queden iguales:
+
+   ```bash
+   git pull && git switch Dev && git merge main
+   ```
+
+Si `main` tiene reglas de protección que exigen pull requests, el pipeline no podrá subir ese commit. En ese caso, permite que GitHub Actions haga push a `main`.
+
 ## Problemas frecuentes
 
 **`npm: command not found` o `go: command not found`**
@@ -246,6 +320,9 @@ Si xterm.js no da abasto con una salida muy grande, el plugin deja de leer al he
 obsidian-termsidian/
  ├─ manifest.json          manifest del plugin (id, versión, versión mínima de Obsidian)
  ├─ .gitattributes         guarda los .sh con saltos de línea LF
+ ├─ .github/
+ │   ├─ workflows/release.yml    tests en cada push y release al llegar a main
+ │   └─ scripts/next-version.sh  calcula la versión a partir de los commits
  ├─ helper/                termsidian-pty, en Go
  │   ├─ main.go            opciones, PTY y conexión con el plugin
  │   ├─ protocol/          formato de los mensajes, con sus tests
@@ -264,6 +341,6 @@ obsidian-termsidian/
 - Pestaña de ajustes: shell, argumentos, fuente y tamaño.
 - Varias terminales, en pestañas.
 - Qué hacer con los atajos de Obsidian cuando la terminal tiene el foco.
-- Probar en macOS y Linux.
-- Publicar con GitHub Actions: compilar los 6 binarios, generar `checksums.txt` y subirlos a una Release.
+- Probar en macOS y Linux a mano (los tests automáticos ya corren en los dos).
+- Publicar en el directorio de complementos de la comunidad. Hace falta un `versions.json`, y que el plugin descargue el helper, porque Obsidian solo instala `main.js`, `manifest.json` y `styles.css`.
 - Añadir el archivo de licencia (MIT).
