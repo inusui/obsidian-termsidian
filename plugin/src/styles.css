@@ -1,0 +1,13 @@
+/* esbuild mete aquí el CSS de xterm.js al compilar. */
+@import "@xterm/xterm/css/xterm.css";
+
+/* Sin márgenes: la terminal ocupa todo el panel. */
+.workspace-leaf-content[data-type="termsidian-terminal"] .view-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.termsidian-view .xterm {
+  height: 100%;
+  padding: 4px 0 0 8px;
+}

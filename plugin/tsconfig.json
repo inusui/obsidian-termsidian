@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom"],
+    "types": ["node"],
+    "strict": true,
+
+    // tsc solo revisa tipos; el JavaScript lo genera esbuild.
+    "noEmit": true,
+
+    // Permite importar "./protocol.ts" con extensión, que es lo que Node
+    // necesita para ejecutar los tests directamente.
+    "allowImportingTsExtensions": true,
+
+    // Prohíbe la sintaxis de TypeScript que no se puede borrar sin más
+    // (enum, namespace...). Node ejecuta los .ts quitando los tipos.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
