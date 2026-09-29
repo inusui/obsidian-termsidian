@@ -201,7 +201,9 @@ func TestRealTerminal(t *testing.T) {
 	command, want := "[ -t 0 ] && echo tty-$((1+1))", "tty-2"
 	if runtime.GOOS == "windows" {
 		opts.shell = "cmd.exe"
-		command, want = "timeout /t 1 /nobreak >nul && echo tty-%OS%", "tty-Windows_NT"
+		// Ruta completa: con Git Bash en el PATH (como en GitHub Actions),
+		// "timeout" sería el de GNU, que no entiende /t.
+		command, want = `%SystemRoot%\System32\timeout.exe /t 1 /nobreak >nul && echo tty-%OS%`, "tty-Windows_NT"
 	}
 
 	p := startHelper(t, opts)
