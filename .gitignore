@@ -1,1 +1,10 @@
 docs/*
+
+# Binarios compilados del helper
+helper/termsidian-pty
+*.exe
+helper/dist/
+
+# Plugin: dependencias y resultado de la compilación
+plugin/node_modules/
+plugin/build/
