@@ -1,4 +1,6 @@
 docs/*
+AGENTS.md
+CLAUDE.md
 
 # Binarios compilados del helper
 helper/termsidian-pty

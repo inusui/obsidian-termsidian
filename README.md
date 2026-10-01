@@ -360,14 +360,6 @@ obsidian-termsidian/
 
 `helper/dist/`, `plugin/build/` y `plugin/node_modules/` se generan al compilar y no se suben al repositorio. `go.sum` y `package-lock.json` sí se suben.
 
-## Pendiente
-
-- Pestaña de ajustes: shell, argumentos, fuente y tamaño.
-- Varias terminales, en pestañas.
-- Qué hacer con los atajos de Obsidian cuando la terminal tiene el foco.
-- Probar en macOS y Linux a mano (los tests automáticos ya corren en los dos).
-- Publicar en el directorio de complementos de la comunidad. Hace falta un `versions.json`, y que el plugin descargue el helper, porque Obsidian solo instala `main.js`, `manifest.json` y `styles.css`.
-
 ## Licencia
 
 [MIT](LICENSE).
