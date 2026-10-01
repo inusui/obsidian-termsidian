@@ -14,6 +14,11 @@ on:
   # Botón "Run workflow" en la pestaña Actions, para lanzarlo a mano.
   workflow_dispatch:
 
+# Por defecto, el token de cada job solo puede leer el repositorio. El job
+# release pide escritura por su cuenta, y eso sustituye a esto solo para él.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Tests (${{ matrix.os }})
@@ -55,10 +60,28 @@ jobs:
           npm ci
           npm test
 
+  # Falla si aparece una dependencia nueva (o deja de usarse una) y no está
+  # reflejada en THIRD_PARTY_NOTICES.md. Así ninguna entra sin que lo sepas.
+  deps:
+    name: Dependencias admitidas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: helper/go.mod
+          cache-dependency-path: helper/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Comparar con THIRD_PARTY_NOTICES.md
+        run: bash .github/scripts/check-deps.sh
+
   version:
     name: Calcular la versión
-    # Solo en main, y solo si los tests pasaron en los tres sistemas.
-    needs: test
+    # Solo en main, y solo si los tests pasaron en los tres sistemas y todas
+    # las dependencias están admitidas.
+    needs: [test, deps]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
@@ -121,8 +144,8 @@ jobs:
           TARGETS: windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
         run: bash helper/build.sh "$VERSION"
 
-      # Genera plugin/build/ con main.js, manifest.json, styles.css y los
-      # 6 binarios en bin/.
+      # Genera plugin/build/ con main.js, manifest.json, styles.css, las
+      # licencias (LICENSE y THIRD_PARTY_NOTICES.md) y los 6 binarios en bin/.
       - name: Compilar el plugin
         working-directory: plugin
         run: |
@@ -163,6 +186,8 @@ jobs:
             plugin/build/main.js \
             plugin/build/manifest.json \
             plugin/build/styles.css \
+            plugin/build/LICENSE \
+            plugin/build/THIRD_PARTY_NOTICES.md \
             helper/dist/termsidian-pty-* \
             helper/dist/checksums.txt \
             "release/termsidian-$VERSION.zip"

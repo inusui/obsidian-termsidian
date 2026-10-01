@@ -71,6 +71,8 @@ La carpeta del plugin queda así. Con la opción A, `bin/` trae además los bina
  ├─ main.js
  ├─ manifest.json
  ├─ styles.css
+ ├─ LICENSE
+ ├─ THIRD_PARTY_NOTICES.md
  └─ bin/
      ├─ termsidian-pty-windows-amd64.exe
      └─ termsidian-pty-windows-arm64.exe
@@ -156,7 +158,7 @@ npm run build
 
 1. Revisa los tipos con `tsc`.
 2. Empaqueta el código con esbuild.
-3. Crea `plugin/build/` con `main.js`, `manifest.json` y `styles.css`, y copia los binarios de `helper/dist/` a `bin/`. Por eso hay que compilar el helper primero.
+3. Crea `plugin/build/` con `main.js`, `manifest.json`, `styles.css` y las licencias (`LICENSE` y `THIRD_PARTY_NOTICES.md`), y copia los binarios de `helper/dist/` a `bin/`. Por eso hay que compilar el helper primero.
 
 Con `npm run dev`, el plugin se recompila cada vez que guardas un archivo. Después hay que copiarlo al vault igualmente.
 
@@ -184,10 +186,11 @@ Estos tests comprueban que los mensajes se reconstruyen aunque lleguen partidos 
 
 ## Integración continua y releases
 
-GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace dos cosas:
+GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace tres cosas:
 
 - **En cada push, a cualquier rama,** ejecuta los tests del helper y del plugin en Windows, macOS y Linux. El resultado se ve en la pestaña **Actions** del repositorio y en la insignia del principio de este README.
-- **Cuando llegan commits a `main`** (por ejemplo, al hacer merge de `Dev`), y si los tests pasan en los tres sistemas, publica una versión nueva sin que hagas nada más: calcula el número, lo guarda en `manifest.json`, crea la etiqueta y publica una Release con:
+- **También en cada push,** comprueba que las dependencias son las admitidas (ver [Dependencias](#dependencias)).
+- **Cuando llegan commits a `main`** (por ejemplo, al hacer merge de `Dev`), y si los tests pasan en los tres sistemas y las dependencias están admitidas, publica una versión nueva sin que hagas nada más: calcula el número, lo guarda en `manifest.json`, crea la etiqueta y publica una Release con:
 
 | Archivo | Qué es |
 |---|---|
@@ -195,6 +198,7 @@ GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) 
 | `main.js`, `manifest.json`, `styles.css` | El plugin, sin el helper |
 | `termsidian-pty-<sistema>-<arquitectura>` | El helper para cada sistema |
 | `checksums.txt` | Hash SHA-256 de cada binario del helper |
+| `LICENSE`, `THIRD_PARTY_NOTICES.md` | La licencia de Termsidian y las de las dependencias que van dentro |
 
 Los binarios de una Release los compila siempre GitHub, nunca un equipo personal.
 
@@ -238,6 +242,23 @@ bash .github/scripts/next-version.sh
    ```
 
 Si `main` tiene reglas de protección que exigen pull requests, el pipeline no podrá subir ese commit. En ese caso, permite que GitHub Actions haga push a `main`.
+
+### Dependencias
+
+La Release lleva dentro código de otros proyectos: xterm.js en `main.js` y `styles.css`, y la biblioteca estándar de Go y varios módulos de Go en los binarios. Sus licencias piden incluir su aviso de copyright, que está en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Ese archivo es también la lista de dependencias admitidas: cada sección `## nombre` es una. En cada push, el pipeline compara esa lista con las dependencias reales y falla si no coinciden:
+
+- **Dependencias nuevas que no están en THIRD_PARTY_NOTICES.md:** añadiste una dependencia (o llegó como dependencia de otra). Si la quieres, añade su sección con el texto de su archivo `LICENSE`. Si no, quítala.
+- **Dependencias que ya no se usan:** borra su sección.
+
+Las dependencias de desarrollo (`devDependencies` de npm, como TypeScript o esbuild) no cuentan: no van dentro de la Release.
+
+Para comprobarlo antes de subir, desde la raíz del repositorio:
+
+```bash
+bash .github/scripts/check-deps.sh
+```
 
 ## Problemas frecuentes
 
@@ -319,10 +340,13 @@ Si xterm.js no da abasto con una salida muy grande, el plugin deja de leer al he
 ```
 obsidian-termsidian/
  ├─ manifest.json          manifest del plugin (id, versión, versión mínima de Obsidian)
+ ├─ LICENSE                licencia MIT
+ ├─ THIRD_PARTY_NOTICES.md licencias de las dependencias, y lista de las admitidas
  ├─ .gitattributes         guarda los .sh con saltos de línea LF
  ├─ .github/
  │   ├─ workflows/release.yml    tests en cada push y release al llegar a main
- │   └─ scripts/next-version.sh  calcula la versión a partir de los commits
+ │   ├─ scripts/next-version.sh  calcula la versión a partir de los commits
+ │   └─ scripts/check-deps.sh    compara las dependencias con THIRD_PARTY_NOTICES.md
  ├─ helper/                termsidian-pty, en Go
  │   ├─ main.go            opciones, PTY y conexión con el plugin
  │   ├─ protocol/          formato de los mensajes, con sus tests
@@ -343,4 +367,7 @@ obsidian-termsidian/
 - Qué hacer con los atajos de Obsidian cuando la terminal tiene el foco.
 - Probar en macOS y Linux a mano (los tests automáticos ya corren en los dos).
 - Publicar en el directorio de complementos de la comunidad. Hace falta un `versions.json`, y que el plugin descargue el helper, porque Obsidian solo instala `main.js`, `manifest.json` y `styles.css`.
-- Añadir el archivo de licencia (MIT).
+
+## Licencia
+
+[MIT](LICENSE).
