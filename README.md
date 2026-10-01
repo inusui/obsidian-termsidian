@@ -6,7 +6,13 @@ Terminal real en la barra lateral derecha de Obsidian, con el shell de tu sistem
 
 Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`, abre una terminal del sistema (ConPTY en Windows, PTY en macOS y Linux), y el plugin la dibuja con [xterm.js](https://xtermjs.org/).
 
-> **Estado:** v0.1, probado en Windows 11. En macOS y Linux compila, pero todavía no se ha probado.
+## Sistemas probados
+
+| Sistema | Instalación de Obsidian | Estado |
+|---|---|---|
+| Windows 11 | Instalador oficial | ✅ Funciona |
+| Linux (Fedora KDE) | Flatpak | ✅ Funciona (requiere [un permiso](#linux-con-flatpak)) |
+| macOS | — | ⚪ Compila, sin probar |
 
 ## Qué hace
 
@@ -20,7 +26,7 @@ Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`,
 
 Abre la terminal con el icono de terminal de la barra izquierda, o con `Ctrl+P` → **Termsidian: Abrir terminal**.
 
-El shell es PowerShell en Windows, y en macOS y Linux el de la variable `$SHELL`.
+El shell es PowerShell en Windows, y en macOS y Linux el de la variable `$SHELL`. Si Obsidian está instalado con Flatpak, hace falta un paso más: ve a [Linux con Flatpak](#linux-con-flatpak).
 
 | Tecla | Qué hace |
 |---|---|
@@ -85,6 +91,26 @@ La carpeta del plugin queda así. Con la opción A, `bin/` trae además los bina
 3. Activa el plugin otra vez.
 
 > **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** la carpeta `bin/` también se sincroniza. Si instalas desde una Release, el plugin funciona en todos tus equipos, sean Windows, macOS o Linux. Si compilas tú, solo trae los binarios de Windows; mira [Otros sistemas](#otros-sistemas).
+
+### Linux con Flatpak
+
+Si instalaste Obsidian desde Flathub, Discover o GNOME Software, corre dentro de un sandbox de Flatpak que tiene su propio sistema. Sin este paso, la terminal se abre dentro de ese sandbox: muestra un prompt como `sh-5.3$` y no encuentra tus programas.
+
+Termsidian detecta Flatpak y abre el shell de tu sistema real con `flatpak-spawn --host`. Para eso, Obsidian necesita un permiso que no trae por defecto. Ejecútalo una sola vez en una terminal normal, fuera de Obsidian:
+
+```bash
+flatpak override --user --talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
+```
+
+Después cierra Obsidian del todo y vuelve a abrirlo. Mientras falte el permiso, la terminal funciona dentro del sandbox y muestra un aviso en amarillo con este mismo comando.
+
+> **Qué implica este permiso:** deja que Obsidian y todos sus complementos ejecuten programas fuera del sandbox, igual que una instalación sin Flatpak. Es lo que necesita una terminal para ver tu sistema. Para quitarlo:
+>
+> ```bash
+> flatpak override --user --no-talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
+> ```
+
+La terminal empieza en la carpeta del vault. Si esa carpeta no existe fuera del sandbox (por ejemplo, un vault abierto a través del portal de documentos), empieza en tu carpeta personal.
 
 ## Compilar
 
@@ -175,6 +201,15 @@ Estos tests comprueban el protocolo y lanzan shells reales para verificar que:
 - los programas detectan una terminal de verdad;
 - el shell recibe los cambios de tamaño;
 - el shell muere si se cierra el plugin o si el helper muere de golpe.
+
+Un test más, `TestFlatpakHostShell`, solo se ejecuta dentro de un sandbox de Flatpak: comprueba que el shell es el del sistema real, que Ctrl+C funciona y que el shell muere al cerrar el plugin. Para ejecutarlo con el sandbox de Obsidian (el binario tiene que estar dentro de `$HOME`, porque el sandbox no ve `/tmp`):
+
+```bash
+CGO_ENABLED=0 go test -c -o ~/helper.test
+flatpak run --talk-name=org.freedesktop.Flatpak --command=$HOME/helper.test md.obsidian.Obsidian -test.v
+```
+
+Sin `--talk-name`, el mismo test comprueba que aparece el aviso del permiso.
 
 El plugin, desde `plugin/`:
 
@@ -327,6 +362,10 @@ Algunos servicios de sincronización no conservan el permiso de ejecución. Dás
 chmod +x "<tu-vault>/.obsidian/plugins/termsidian/bin/"termsidian-pty-*
 ```
 
+**En Linux, el prompt es `sh-5.3$` y no encuentra mis programas**
+
+Obsidian está instalado con Flatpak y le falta el permiso. Ve a [Linux con Flatpak](#linux-con-flatpak).
+
 **Ver los mensajes de error**
 
 Abre la consola de Obsidian con `Ctrl+Shift+I`, pestaña **Console**. Los mensajes del helper empiezan por `[termsidian-pty]`.
@@ -379,6 +418,7 @@ obsidian-termsidian/
  │   └─ scripts/check-deps.sh    compara las dependencias con THIRD_PARTY_NOTICES.md
  ├─ helper/                termsidian-pty, en Go
  │   ├─ main.go            opciones, PTY y conexión con el plugin
+ │   ├─ flatpak*.go        lanzar el shell fuera del sandbox de Flatpak
  │   ├─ protocol/          formato de los mensajes, con sus tests
  │   ├─ build.sh           compila los binarios en helper/dist/
  │   └─ go.mod, go.sum     dependencias y sus hashes

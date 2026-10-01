@@ -43,7 +43,7 @@ func main() {
 	var opts options
 	// Las variantes ...Var escriben en una variable que ya existe. &opts.shell
 	// es la dirección de ese campo: un puntero para que flag lo rellene.
-	flag.StringVar(&opts.shell, "shell", defaultShell(), "shell a ejecutar")
+	flag.StringVar(&opts.shell, "shell", "", "shell a ejecutar (vacío = el del sistema)")
 	flag.StringVar(&opts.cwd, "cwd", "", "directorio inicial (vacío = el actual)")
 	flag.IntVar(&opts.cols, "cols", 80, "columnas iniciales")
 	flag.IntVar(&opts.rows, "rows", 24, "filas iniciales")
@@ -73,9 +73,11 @@ func main() {
 // y escribe mensajes en out. Recibe io.Reader/io.Writer en lugar de usar
 // os.Stdin y os.Stdout directamente para que los tests puedan simular al plugin.
 func run(opts options, in io.Reader, out io.Writer) error {
+	// Dentro de Flatpak el shell se lanza a través de flatpak-spawn.
+	name, args, notice := shellCommand(opts)
 	// Ruta completa del shell. go-pty no la busca y, si hay cwd, en Windows
 	// buscaría "cmd.exe" dentro de cwd.
-	shellPath, err := exec.LookPath(opts.shell)
+	shellPath, err := exec.LookPath(name)
 	if err != nil {
 		return err
 	}
@@ -97,12 +99,30 @@ func run(opts options, in io.Reader, out io.Writer) error {
 		return err
 	}
 
-	cmd := p.Command(shellPath, opts.args...)
-	cmd.Dir = opts.cwd
-	// Les decimos a los programas qué terminal tienen delante: xterm.js.
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
-	if err := cmd.Start(); err != nil {
-		return err
+	// proc es el proceso lanzado y wait espera a que termine. Son dos
+	// variables porque go-pty y os/exec devuelven tipos distintos.
+	var proc *os.Process
+	var wait func() *os.ProcessState
+	// stop mata al shell cuando el plugin se va.
+	stop := func() { proc.Kill() }
+	if name == "flatpak-spawn" {
+		cmd, err := startOnHost(p, shellPath, args, opts.cwd)
+		if err != nil {
+			return err
+		}
+		proc, wait = cmd.Process, func() *os.ProcessState { cmd.Wait(); return cmd.ProcessState }
+		// Matar a flatpak-spawn no mata al shell del host. Cerrar la PTY sí:
+		// el sistema manda SIGHUP a la sesión que la controla.
+		stop = func() { closePty(); proc.Kill() }
+	} else {
+		cmd := p.Command(shellPath, args...)
+		cmd.Dir = opts.cwd
+		// Les decimos a los programas qué terminal tienen delante: xterm.js.
+		cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		proc, wait = cmd.Process, func() *os.ProcessState { cmd.Wait(); return cmd.ProcessState }
 	}
 
 	// En Unix cerramos nuestra copia del lado de la PTY que usa el shell; si
@@ -117,6 +137,11 @@ func run(opts options, in io.Reader, out io.Writer) error {
 	if err := protocol.WriteFrame(out, protocol.Hello, protocol.HelloPayload(version)); err != nil {
 		return err
 	}
+	if notice != "" {
+		if err := protocol.WriteFrame(out, protocol.Data, []byte(notice)); err != nil {
+			return err
+		}
+	}
 
 	// Plugin → shell. Si el plugin cierra la tubería (se cerró Obsidian o la
 	// pestaña), matamos al shell para no dejar huérfanos (RF-06). Si es el
@@ -127,7 +152,7 @@ func run(opts options, in io.Reader, out io.Writer) error {
 	// como en cualquier terminal.
 	go func() {
 		readInput(in, p)
-		cmd.Process.Kill()
+		stop()
 	}()
 
 	// Shell → plugin, también en paralelo: con una PTY la salida no siempre
@@ -139,7 +164,7 @@ func run(opts options, in io.Reader, out io.Writer) error {
 		close(done)
 	}()
 
-	cmd.Wait() // el código de salida queda en cmd.ProcessState
+	state := wait()
 
 	// El shell terminó. En Unix la lectura acaba sola al vaciarse la PTY; en
 	// Windows la ConPTY mantiene la tubería abierta hasta que la cerramos.
@@ -152,7 +177,7 @@ func run(opts options, in io.Reader, out io.Writer) error {
 	closePty()
 	<-done
 
-	return protocol.WriteFrame(out, protocol.Exit, protocol.ExitPayload(cmd.ProcessState.ExitCode()))
+	return protocol.WriteFrame(out, protocol.Exit, protocol.ExitPayload(state.ExitCode()))
 }
 
 // terminal es lo que readInput necesita de la PTY. En Go es habitual definir
