@@ -13,6 +13,7 @@
 #     de main.js.
 #
 # Uso: bash .github/scripts/check-deps.sh
+# Necesita plugin/node_modules: antes, npm install en plugin/.
 
 set -euo pipefail
 
@@ -25,6 +26,11 @@ targets="${TARGETS:-windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/
 
 # Las listas van a archivos temporales. trap borra la carpeta al salir del
 # script, pase lo que pase.
+if [ ! -d plugin/node_modules ]; then
+  echo "Falta plugin/node_modules: ejecuta npm install en plugin/ y vuelve a probar."
+  exit 1
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
@@ -38,18 +44,14 @@ trap 'rm -rf "$tmp"' EXIT
     (cd helper && CGO_ENABLED=0 GOOS="${target%/*}" GOARCH="${target#*/}" \
       go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}{{end}}{{end}}' .)
   done
-  # package-lock.json marca con "dev": true lo que solo se usa para compilar
-  # (typescript, esbuild, obsidian...). Cada clave es una ruta como
-  # "node_modules/@xterm/xterm": el nombre es lo que va después del último
-  # "node_modules/".
-  node -e '
-    const lock = require("./plugin/package-lock.json");
-    for (const [path, pkg] of Object.entries(lock.packages)) {
-      if (path.startsWith("node_modules/") && !pkg.dev) {
-        console.log(path.slice(path.lastIndexOf("node_modules/") + "node_modules/".length));
-      }
-    }
-  '
+  # npm ls --omit=dev deja fuera lo que solo se usa para compilar
+  # (typescript, esbuild, obsidian...); --all incluye las dependencias de
+  # las dependencias, y --parseable imprime una ruta por línea, como
+  # ".../plugin/node_modules/@xterm/xterm". El nombre es lo que va después
+  # del último "node_modules/"; la primera línea, el propio plugin, no lo
+  # tiene y sed la descarta. npm ls falla si node_modules no cuadra con
+  # package.json, y pipefail hace que falle el script.
+  (cd plugin && npm ls --omit=dev --all --parseable) | sed -n 's#.*/node_modules/##p'
 } >"$tmp/actual.raw"
 
 # 2. Las admitidas: los títulos "## " de THIRD_PARTY_NOTICES.md. tr quita el

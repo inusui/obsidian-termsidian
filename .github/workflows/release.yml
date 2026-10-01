@@ -1,4 +1,5 @@
-# Tests en cada push, y release automática al llegar commits a main.
+# Tests en cada push, y release automática al llegar commits a main. Cada
+# lunes, además, tests y auditoría de dependencias aunque nadie haga push.
 #
 # En main, la versión nueva se calcula con los mensajes de Conventional
 # Commits (ver .github/scripts/next-version.sh): feat → minor, fix → patch,
@@ -13,6 +14,12 @@ on:
     branches: ["**"]
   # Botón "Run workflow" en la pestaña Actions, para lanzarlo a mano.
   workflow_dispatch:
+  # Cada lunes a las 8:00 UTC, sobre main: npm audit avisa de
+  # vulnerabilidades publicadas desde el último push. Sin package-lock.json,
+  # Dependabot solo ve las dependencias directas de package.json; npm audit
+  # revisa también las que llegan dentro de otras.
+  schedule:
+    - cron: "0 8 * * 1"
 
 # Por defecto, el token de cada job solo puede leer el repositorio. El job
 # release pide escritura por su cuenta, y eso sustituye a esto solo para él.
@@ -41,8 +48,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
 
       - name: Tests del helper
         working-directory: helper
@@ -57,7 +62,7 @@ jobs:
       - name: Tests del plugin
         working-directory: plugin
         run: |
-          npm ci
+          npm install
           npm test
 
   # Falla si aparece una dependencia nueva (o deja de usarse una) y no está
@@ -74,15 +79,27 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # check-deps.sh lee las dependencias npm de plugin/node_modules.
+      - name: Instalar las dependencias del plugin
+        working-directory: plugin
+        run: npm install
       - name: Comparar con THIRD_PARTY_NOTICES.md
         run: bash .github/scripts/check-deps.sh
+      # Falla si alguna dependencia, directa o indirecta, tiene una
+      # vulnerabilidad conocida. Incluye las de desarrollo: no van en la
+      # Release, pero corren al compilar.
+      - name: Vulnerabilidades (npm audit)
+        working-directory: plugin
+        run: npm audit
 
   version:
     name: Calcular la versión
     # Solo en main, y solo si los tests pasaron en los tres sistemas y todas
     # las dependencias están admitidas.
     needs: [test, deps]
-    if: github.ref == 'refs/heads/main'
+    # La ejecución semanal también corre sobre main, pero solo revisa: no
+    # publica nada.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.next.outputs.version }}
@@ -125,8 +142,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
 
       # Primero en local: el plugin copia manifest.json al compilar, y tiene
       # que llevar ya la versión nueva.
@@ -149,7 +164,7 @@ jobs:
       - name: Compilar el plugin
         working-directory: plugin
         run: |
-          npm ci
+          npm install
           npm run build
 
       # Un zip con la carpeta del plugin lista para copiar a .obsidian/plugins/.
@@ -166,7 +181,7 @@ jobs:
       # saltarse esa regla. Por eso el push usa una deploy key con permiso de
       # escritura, que sí está en las excepciones de la regla. La clave
       # privada está en el secreto RELEASE_DEPLOY_KEY y solo existe durante
-      # este paso: los anteriores (npm ci, la compilación) no la ven.
+      # este paso: los anteriores (npm install, la compilación) no la ven.
       #
       # Lo que se sube con una deploy key sí lanza el workflow otra vez;
       # "[skip ci]" en el mensaje del commit lo evita.

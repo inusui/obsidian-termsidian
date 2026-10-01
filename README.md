@@ -6,7 +6,13 @@ Terminal real en la barra lateral derecha de Obsidian, con el shell de tu sistem
 
 Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`, abre una terminal del sistema (ConPTY en Windows, PTY en macOS y Linux), y el plugin la dibuja con [xterm.js](https://xtermjs.org/).
 
-> **Estado:** v0.1, probado en Windows 11. En macOS y Linux compila, pero todavía no se ha probado.
+## Sistemas probados
+
+| Sistema | Instalación de Obsidian | Estado |
+|---|---|---|
+| Windows 11 | Instalador oficial | ✅ Funciona |
+| Linux (Fedora KDE) | Flatpak | ✅ Funciona (requiere [un permiso](#linux-con-flatpak)) |
+| macOS | — | ⚪ Compila, sin probar |
 
 ## Qué hace
 
@@ -20,7 +26,7 @@ Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`,
 
 Abre la terminal con el icono de terminal de la barra izquierda, o con `Ctrl+P` → **Termsidian: Abrir terminal**.
 
-El shell es PowerShell en Windows, y en macOS y Linux el de la variable `$SHELL`.
+El shell es PowerShell en Windows, y en macOS y Linux el de la variable `$SHELL`. Si Obsidian está instalado con Flatpak, hace falta un paso más: ve a [Linux con Flatpak](#linux-con-flatpak).
 
 | Tecla | Qué hace |
 |---|---|
@@ -85,6 +91,26 @@ La carpeta del plugin queda así. Con la opción A, `bin/` trae además los bina
 3. Activa el plugin otra vez.
 
 > **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** la carpeta `bin/` también se sincroniza. Si instalas desde una Release, el plugin funciona en todos tus equipos, sean Windows, macOS o Linux. Si compilas tú, solo trae los binarios de Windows; mira [Otros sistemas](#otros-sistemas).
+
+### Linux con Flatpak
+
+Si instalaste Obsidian desde Flathub, Discover o GNOME Software, corre dentro de un sandbox de Flatpak que tiene su propio sistema. Sin este paso, la terminal se abre dentro de ese sandbox: muestra un prompt como `sh-5.3$` y no encuentra tus programas.
+
+Termsidian detecta Flatpak y abre el shell de tu sistema real con `flatpak-spawn --host`. Para eso, Obsidian necesita un permiso que no trae por defecto. Ejecútalo una sola vez en una terminal normal, fuera de Obsidian:
+
+```bash
+flatpak override --user --talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
+```
+
+Después cierra Obsidian del todo y vuelve a abrirlo. Mientras falte el permiso, la terminal funciona dentro del sandbox y muestra un aviso en amarillo con este mismo comando.
+
+> **Qué implica este permiso:** deja que Obsidian y todos sus complementos ejecuten programas fuera del sandbox, igual que una instalación sin Flatpak. Es lo que necesita una terminal para ver tu sistema. Para quitarlo:
+>
+> ```bash
+> flatpak override --user --no-talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
+> ```
+
+La terminal empieza en la carpeta del vault. Si esa carpeta no existe fuera del sandbox (por ejemplo, un vault abierto a través del portal de documentos), empieza en tu carpeta personal.
 
 ## Compilar
 
@@ -176,6 +202,15 @@ Estos tests comprueban el protocolo y lanzan shells reales para verificar que:
 - el shell recibe los cambios de tamaño;
 - el shell muere si se cierra el plugin o si el helper muere de golpe.
 
+Un test más, `TestFlatpakHostShell`, solo se ejecuta dentro de un sandbox de Flatpak: comprueba que el shell es el del sistema real, que Ctrl+C funciona y que el shell muere al cerrar el plugin. Para ejecutarlo con el sandbox de Obsidian (el binario tiene que estar dentro de `$HOME`, porque el sandbox no ve `/tmp`):
+
+```bash
+CGO_ENABLED=0 go test -c -o ~/helper.test
+flatpak run --talk-name=org.freedesktop.Flatpak --command=$HOME/helper.test md.obsidian.Obsidian -test.v
+```
+
+Sin `--talk-name`, el mismo test comprueba que aparece el aviso del permiso.
+
 El plugin, desde `plugin/`:
 
 ```bash
@@ -186,10 +221,11 @@ Estos tests comprueban que los mensajes se reconstruyen aunque lleguen partidos 
 
 ## Integración continua y releases
 
-GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace tres cosas:
+GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace cuatro cosas:
 
 - **En cada push, a cualquier rama,** ejecuta los tests del helper y del plugin en Windows, macOS y Linux. El resultado se ve en la pestaña **Actions** del repositorio y en la insignia del principio de este README.
-- **También en cada push,** comprueba que las dependencias son las admitidas (ver [Dependencias](#dependencias)).
+- **También en cada push,** comprueba que las dependencias son las admitidas (ver [Dependencias](#dependencias)) y que ninguna tiene vulnerabilidades conocidas, con `npm audit` (ver [Vulnerabilidades](#vulnerabilidades)).
+- **Cada lunes a las 8:00 UTC,** repite lo anterior sobre `main` aunque nadie haya hecho push, para enterarte de vulnerabilidades publicadas después. Esta ejecución nunca publica una versión.
 - **Cuando llegan commits a `main`** (por ejemplo, al hacer merge de `Dev`), y si los tests pasan en los tres sistemas y las dependencias están admitidas, publica una versión nueva sin que hagas nada más: calcula el número, lo guarda en `manifest.json`, crea la etiqueta y publica una Release con:
 
 | Archivo | Qué es |
@@ -248,7 +284,7 @@ Ese archivo es también la lista de dependencias admitidas: cada sección `## no
 
 Las dependencias de desarrollo (`devDependencies` de npm, como TypeScript o esbuild) no cuentan: no van dentro de la Release.
 
-Para comprobarlo antes de subir, desde la raíz del repositorio:
+Para comprobarlo antes de subir, desde la raíz del repositorio (necesita haber hecho `npm install` en `plugin/`):
 
 ```bash
 bash .github/scripts/check-deps.sh
@@ -256,9 +292,13 @@ bash .github/scripts/check-deps.sh
 
 ### Vulnerabilidades
 
-GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Dependabot alerts**, activado en **Settings → Code security**. Solo avisa: no abre pull requests ni cambia nada en el repositorio. La actualización se hace a mano:
+GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Dependabot alerts**, activado en **Settings → Code security**. Solo avisa: no abre pull requests ni cambia nada en el repositorio. Como `package-lock.json` no se sube, Dependabot solo ve las dependencias npm que están en `package.json`, no las que llegan dentro de otras.
 
-1. Abre la alerta en la pestaña **Security → Dependabot** del repositorio. Dice qué dependencia es, qué gravedad tiene y a qué versión hay que subir.
+Esas las revisa `npm audit` en el pipeline, en cada push y cada lunes. Si encuentra una, el job **Dependencias admitidas** falla y GitHub te avisa por correo. El log del paso **Vulnerabilidades (npm audit)** dice qué paquete es, de dónde llega y a qué versión hay que subir. Para comprobarlo en local, desde `plugin/`, ejecuta `npm audit`.
+
+La actualización se hace a mano:
+
+1. Abre la alerta en la pestaña **Security → Dependabot** del repositorio, o el log de `npm audit`. Dice qué dependencia es, qué gravedad tiene y a qué versión hay que subir.
 2. En tu rama de trabajo, sube la dependencia a esa versión (los números son de ejemplo):
 
    ```bash
@@ -271,14 +311,17 @@ GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Depe
    cd plugin && npm install @xterm/xterm@6.0.1
    ```
 
-   ```bash
-   # Un paquete npm que llega como dependencia de otro
-   cd plugin && npm audit fix
+   Un paquete npm que llega como dependencia de otro se fuerza con `overrides` en `plugin/package.json`, con la versión exacta, y después `npm install`:
+
+   ```json
+   "overrides": {
+     "moment": "2.31.0"
+   }
    ```
 
    Si es una acción del workflow, cambia su versión en `release.yml`.
 
-3. Pasa los tests y `bash .github/scripts/check-deps.sh`.
+3. Pasa los tests, `bash .github/scripts/check-deps.sh` y `npm audit`.
 4. Haz commit. El tipo decide si se publica una versión al llegar a `main`:
 
 | Qué actualizaste | Commit | Versión nueva |
@@ -287,7 +330,7 @@ GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Depe
 | Una herramienta de compilación (TypeScript, esbuild…) | `chore(deps): …` | ninguna |
 | Una acción del workflow | `ci(deps): …` | ninguna |
 
-5. Haz merge en `main` como siempre. La alerta se cierra sola cuando el arreglo llega a `main`.
+5. Haz merge en `main` como siempre. La alerta de Dependabot se cierra sola cuando el arreglo llega a `main`.
 
 ## Problemas frecuentes
 
@@ -326,6 +369,10 @@ Algunos servicios de sincronización no conservan el permiso de ejecución. Dás
 ```bash
 chmod +x "<tu-vault>/.obsidian/plugins/termsidian/bin/"termsidian-pty-*
 ```
+
+**En Linux, el prompt es `sh-5.3$` y no encuentra mis programas**
+
+Obsidian está instalado con Flatpak y le falta el permiso. Ve a [Linux con Flatpak](#linux-con-flatpak).
 
 **Ver los mensajes de error**
 
@@ -379,16 +426,17 @@ obsidian-termsidian/
  │   └─ scripts/check-deps.sh    compara las dependencias con THIRD_PARTY_NOTICES.md
  ├─ helper/                termsidian-pty, en Go
  │   ├─ main.go            opciones, PTY y conexión con el plugin
+ │   ├─ flatpak*.go        lanzar el shell fuera del sandbox de Flatpak
  │   ├─ protocol/          formato de los mensajes, con sus tests
  │   ├─ build.sh           compila los binarios en helper/dist/
  │   └─ go.mod, go.sum     dependencias y sus hashes
  └─ plugin/                el plugin, en TypeScript
      ├─ src/               main.ts, view.ts, session.ts, protocol.ts, styles.css y tests
      ├─ esbuild.config.mjs genera plugin/build/
-     └─ package.json, package-lock.json
+     └─ package.json
 ```
 
-`helper/dist/`, `plugin/build/` y `plugin/node_modules/` se generan al compilar y no se suben al repositorio. `go.sum` y `package-lock.json` sí se suben.
+`helper/dist/`, `plugin/build/`, `plugin/node_modules/` y `plugin/package-lock.json` se generan al compilar o al hacer `npm install` y no se suben al repositorio. `go.sum` sí se sube.
 
 ## Seguridad
 
