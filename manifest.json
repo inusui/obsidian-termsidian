@@ -1,7 +1,7 @@
 {
   "id": "termsidian",
   "name": "Termsidian",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.7.2",
   "description": "Real terminal in the right sidebar, running your system shell. Windows, macOS and Linux.",
   "author": "inusui",
