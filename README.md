@@ -260,6 +260,41 @@ Para comprobarlo antes de subir, desde la raíz del repositorio:
 bash .github/scripts/check-deps.sh
 ```
 
+### Vulnerabilidades
+
+GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Dependabot alerts**, activado en **Settings → Code security**. Solo avisa: no abre pull requests ni cambia nada en el repositorio. La actualización se hace a mano:
+
+1. Abre la alerta en la pestaña **Security → Dependabot** del repositorio. Dice qué dependencia es, qué gravedad tiene y a qué versión hay que subir.
+2. En tu rama de trabajo, sube la dependencia a esa versión (los números son de ejemplo):
+
+   ```bash
+   # Un módulo de Go
+   cd helper && go get golang.org/x/crypto@v0.52.0 && go mod tidy
+   ```
+
+   ```bash
+   # Un paquete npm que está en package.json
+   cd plugin && npm install @xterm/xterm@6.0.1
+   ```
+
+   ```bash
+   # Un paquete npm que llega como dependencia de otro
+   cd plugin && npm audit fix
+   ```
+
+   Si es una acción del workflow, cambia su versión en `release.yml`.
+
+3. Pasa los tests y `bash .github/scripts/check-deps.sh`.
+4. Haz commit. El tipo decide si se publica una versión al llegar a `main`:
+
+| Qué actualizaste | Commit | Versión nueva |
+|---|---|---|
+| Algo que va dentro de la Release (módulos de Go, xterm.js) | `fix(deps): …` | patch, con el arreglo |
+| Una herramienta de compilación (TypeScript, esbuild…) | `chore(deps): …` | ninguna |
+| Una acción del workflow | `ci(deps): …` | ninguna |
+
+5. Haz merge en `main` como siempre. La alerta se cierra sola cuando el arreglo llega a `main`.
+
 ## Problemas frecuentes
 
 **`npm: command not found` o `go: command not found`**
@@ -342,6 +377,7 @@ obsidian-termsidian/
  ├─ manifest.json          manifest del plugin (id, versión, versión mínima de Obsidian)
  ├─ LICENSE                licencia MIT
  ├─ THIRD_PARTY_NOTICES.md licencias de las dependencias, y lista de las admitidas
+ ├─ SECURITY.md            cómo reportar una vulnerabilidad
  ├─ .gitattributes         guarda los .sh con saltos de línea LF
  ├─ .github/
  │   ├─ workflows/release.yml    tests en cada push y release al llegar a main
@@ -359,6 +395,10 @@ obsidian-termsidian/
 ```
 
 `helper/dist/`, `plugin/build/` y `plugin/node_modules/` se generan al compilar y no se suben al repositorio. `go.sum` y `package-lock.json` sí se suben.
+
+## Seguridad
+
+Si encuentras una vulnerabilidad, no abras un issue público: repórtala en privado como explica [SECURITY.md](SECURITY.md).
 
 ## Licencia
 
