@@ -19,5 +19,8 @@
     "esbuild": "^0.28.2",
     "obsidian": "^1.13.1",
     "typescript": "^7.0.2"
+  },
+  "overrides": {
+    "moment": "2.31.0"
   }
 }
