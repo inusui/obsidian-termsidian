@@ -2,6 +2,8 @@
 //   main.js        (src/main.ts y todo lo que importa, en un solo archivo)
 //   styles.css     (src/styles.css + el CSS de xterm)
 //   manifest.json  (el de la raíz del repositorio)
+//   LICENSE, THIRD_PARTY_NOTICES.md  (licencias: la nuestra y las de lo que
+//                  va dentro de main.js, styles.css y bin/)
 //   bin/           (los binarios de helper/dist, generados con build.sh)
 //
 // Uso: node esbuild.config.mjs [--watch]
@@ -15,7 +17,9 @@ const helperDist = "../helper/dist";
 
 rmSync(outdir, { recursive: true, force: true });
 mkdirSync(`${outdir}/bin`, { recursive: true });
-cpSync("../manifest.json", `${outdir}/manifest.json`);
+for (const file of ["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md"]) {
+  cpSync(`../${file}`, `${outdir}/${file}`);
+}
 
 if (existsSync(helperDist)) {
   for (const file of readdirSync(helperDist)) {
