@@ -283,7 +283,7 @@ Ese archivo es también la lista de dependencias admitidas: cada sección `## no
 
 Las dependencias de desarrollo (`devDependencies` de npm, como TypeScript o esbuild) no cuentan: no van dentro de la Release.
 
-Para comprobarlo antes de subir, desde la raíz del repositorio:
+Para comprobarlo antes de subir, desde la raíz del repositorio (necesita haber hecho `npm install` en `plugin/`):
 
 ```bash
 bash .github/scripts/check-deps.sh
@@ -306,9 +306,12 @@ GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Depe
    cd plugin && npm install @xterm/xterm@6.0.1
    ```
 
-   ```bash
-   # Un paquete npm que llega como dependencia de otro
-   cd plugin && npm audit fix
+   Un paquete npm que llega como dependencia de otro se fuerza con `overrides` en `plugin/package.json`, con la versión exacta, y después `npm install`:
+
+   ```json
+   "overrides": {
+     "moment": "2.31.0"
+   }
    ```
 
    Si es una acción del workflow, cambia su versión en `release.yml`.
@@ -425,10 +428,10 @@ obsidian-termsidian/
  └─ plugin/                el plugin, en TypeScript
      ├─ src/               main.ts, view.ts, session.ts, protocol.ts, styles.css y tests
      ├─ esbuild.config.mjs genera plugin/build/
-     └─ package.json, package-lock.json
+     └─ package.json
 ```
 
-`helper/dist/`, `plugin/build/` y `plugin/node_modules/` se generan al compilar y no se suben al repositorio. `go.sum` y `package-lock.json` sí se suben.
+`helper/dist/`, `plugin/build/`, `plugin/node_modules/` y `plugin/package-lock.json` se generan al compilar o al hacer `npm install` y no se suben al repositorio. `go.sum` sí se sube.
 
 ## Seguridad
 

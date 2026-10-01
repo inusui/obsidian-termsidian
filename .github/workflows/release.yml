@@ -41,8 +41,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
 
       - name: Tests del helper
         working-directory: helper
@@ -57,7 +55,7 @@ jobs:
       - name: Tests del plugin
         working-directory: plugin
         run: |
-          npm ci
+          npm install
           npm test
 
   # Falla si aparece una dependencia nueva (o deja de usarse una) y no está
@@ -74,6 +72,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # check-deps.sh lee las dependencias npm de plugin/node_modules.
+      - name: Instalar las dependencias del plugin
+        working-directory: plugin
+        run: npm install
       - name: Comparar con THIRD_PARTY_NOTICES.md
         run: bash .github/scripts/check-deps.sh
 
@@ -125,8 +127,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: plugin/package-lock.json
 
       # Primero en local: el plugin copia manifest.json al compilar, y tiene
       # que llevar ya la versión nueva.
@@ -149,7 +149,7 @@ jobs:
       - name: Compilar el plugin
         working-directory: plugin
         run: |
-          npm ci
+          npm install
           npm run build
 
       # Un zip con la carpeta del plugin lista para copiar a .obsidian/plugins/.
@@ -166,7 +166,7 @@ jobs:
       # saltarse esa regla. Por eso el push usa una deploy key con permiso de
       # escritura, que sí está en las excepciones de la regla. La clave
       # privada está en el secreto RELEASE_DEPLOY_KEY y solo existe durante
-      # este paso: los anteriores (npm ci, la compilación) no la ven.
+      # este paso: los anteriores (npm install, la compilación) no la ven.
       #
       # Lo que se sube con una deploy key sí lanza el workflow otra vez;
       # "[skip ci]" en el mensaje del commit lo evita.
