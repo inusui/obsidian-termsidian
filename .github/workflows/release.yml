@@ -107,7 +107,7 @@ jobs:
     if: needs.version.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
-      contents: write # para subir el commit de versión, la etiqueta y la Release
+      contents: write # para crear la Release (el commit y la etiqueta usan la deploy key)
     # Si llegan dos merges seguidos, las releases se hacen una detrás de otra.
     concurrency:
       group: release
@@ -161,18 +161,46 @@ jobs:
           zip -r "termsidian-$VERSION.zip" termsidian
 
       # Solo cuando todo compiló: así no queda una etiqueta sin Release.
-      # Lo que se sube con github.token no vuelve a lanzar el workflow, así
-      # que este commit no provoca otra release.
+      #
+      # main solo acepta cambios por pull request, y github.token no puede
+      # saltarse esa regla. Por eso el push usa una deploy key con permiso de
+      # escritura, que sí está en las excepciones de la regla. La clave
+      # privada está en el secreto RELEASE_DEPLOY_KEY y solo existe durante
+      # este paso: los anteriores (npm ci, la compilación) no la ven.
+      #
+      # Lo que se sube con una deploy key sí lanza el workflow otra vez;
+      # "[skip ci]" en el mensaje del commit lo evita.
       - name: Guardar la versión y crear la etiqueta
+        env:
+          DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::Falta el secreto RELEASE_DEPLOY_KEY."
+            exit 1
+          fi
+
+          # La clave y la lista de claves de servidor de GitHub van a la
+          # carpeta temporal del runner, y la clave se borra al salir.
+          key="$RUNNER_TEMP/deploy_key"
+          known_hosts="$RUNNER_TEMP/known_hosts"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" >"$key"
+          chmod 600 "$key"
+          # Las claves de servidor de github.com, desde la API de GitHub por
+          # HTTPS: así ssh sabe que habla con GitHub y no con un impostor.
+          gh api meta --jq '.ssh_keys[] | "github.com " + .' >"$known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$known_hosts"
+          remote="git@github.com:$GITHUB_REPOSITORY.git"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git diff --quiet manifest.json; then
-            git commit -m "chore(release): $VERSION" manifest.json
-            git push origin HEAD:main
+            git commit -m "chore(release): $VERSION [skip ci]" manifest.json
+            git push "$remote" HEAD:main
           fi
           git tag "$VERSION"
-          git push origin "$VERSION"
+          git push "$remote" "$VERSION"
 
       # gh viene instalado en los runners de GitHub; github.token es un token
       # temporal que GitHub crea para cada ejecución.

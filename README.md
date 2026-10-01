@@ -227,21 +227,15 @@ bash .github/scripts/next-version.sh
 
 ### Publicar una versión
 
-1. Haz merge de tu rama en `main` y súbelo:
-
-   ```bash
-   git switch main && git merge Dev && git push
-   ```
+1. `main` solo acepta cambios por pull request: sube tu rama, abre un PR de `Dev` a `main` en GitHub y haz merge.
 
 2. Sigue el progreso en la pestaña **Actions**. Al terminar, la Release aparece en la página de Releases.
 
 3. El pipeline sube a `main` un commit `chore(release): <versión>` con el `manifest.json` actualizado. Tráelo a tu rama de trabajo para que las dos queden iguales:
 
    ```bash
-   git pull && git switch Dev && git merge main
+   git switch main && git pull && git switch Dev && git merge main
    ```
-
-Si `main` tiene reglas de protección que exigen pull requests, el pipeline no podrá subir ese commit. En ese caso, permite que GitHub Actions haga push a `main`.
 
 ### Dependencias
 
