@@ -221,10 +221,11 @@ Estos tests comprueban que los mensajes se reconstruyen aunque lleguen partidos 
 
 ## Integración continua y releases
 
-GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace tres cosas:
+GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) hace cuatro cosas:
 
 - **En cada push, a cualquier rama,** ejecuta los tests del helper y del plugin en Windows, macOS y Linux. El resultado se ve en la pestaña **Actions** del repositorio y en la insignia del principio de este README.
-- **También en cada push,** comprueba que las dependencias son las admitidas (ver [Dependencias](#dependencias)).
+- **También en cada push,** comprueba que las dependencias son las admitidas (ver [Dependencias](#dependencias)) y que ninguna tiene vulnerabilidades conocidas, con `npm audit` (ver [Vulnerabilidades](#vulnerabilidades)).
+- **Cada lunes a las 8:00 UTC,** repite lo anterior sobre `main` aunque nadie haya hecho push, para enterarte de vulnerabilidades publicadas después. Esta ejecución nunca publica una versión.
 - **Cuando llegan commits a `main`** (por ejemplo, al hacer merge de `Dev`), y si los tests pasan en los tres sistemas y las dependencias están admitidas, publica una versión nueva sin que hagas nada más: calcula el número, lo guarda en `manifest.json`, crea la etiqueta y publica una Release con:
 
 | Archivo | Qué es |
@@ -291,9 +292,13 @@ bash .github/scripts/check-deps.sh
 
 ### Vulnerabilidades
 
-GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Dependabot alerts**, activado en **Settings → Code security**. Solo avisa: no abre pull requests ni cambia nada en el repositorio. La actualización se hace a mano:
+GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Dependabot alerts**, activado en **Settings → Code security**. Solo avisa: no abre pull requests ni cambia nada en el repositorio. Como `package-lock.json` no se sube, Dependabot solo ve las dependencias npm que están en `package.json`, no las que llegan dentro de otras.
 
-1. Abre la alerta en la pestaña **Security → Dependabot** del repositorio. Dice qué dependencia es, qué gravedad tiene y a qué versión hay que subir.
+Esas las revisa `npm audit` en el pipeline, en cada push y cada lunes. Si encuentra una, el job **Dependencias admitidas** falla y GitHub te avisa por correo. El log del paso **Vulnerabilidades (npm audit)** dice qué paquete es, de dónde llega y a qué versión hay que subir. Para comprobarlo en local, desde `plugin/`, ejecuta `npm audit`.
+
+La actualización se hace a mano:
+
+1. Abre la alerta en la pestaña **Security → Dependabot** del repositorio, o el log de `npm audit`. Dice qué dependencia es, qué gravedad tiene y a qué versión hay que subir.
 2. En tu rama de trabajo, sube la dependencia a esa versión (los números son de ejemplo):
 
    ```bash
@@ -316,7 +321,7 @@ GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Depe
 
    Si es una acción del workflow, cambia su versión en `release.yml`.
 
-3. Pasa los tests y `bash .github/scripts/check-deps.sh`.
+3. Pasa los tests, `bash .github/scripts/check-deps.sh` y `npm audit`.
 4. Haz commit. El tipo decide si se publica una versión al llegar a `main`:
 
 | Qué actualizaste | Commit | Versión nueva |
@@ -325,7 +330,7 @@ GitHub avisa cuando una dependencia tiene una vulnerabilidad conocida: es **Depe
 | Una herramienta de compilación (TypeScript, esbuild…) | `chore(deps): …` | ninguna |
 | Una acción del workflow | `ci(deps): …` | ninguna |
 
-5. Haz merge en `main` como siempre. La alerta se cierra sola cuando el arreglo llega a `main`.
+5. Haz merge en `main` como siempre. La alerta de Dependabot se cierra sola cuando el arreglo llega a `main`.
 
 ## Problemas frecuentes
 

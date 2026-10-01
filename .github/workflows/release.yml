@@ -1,4 +1,5 @@
-# Tests en cada push, y release automática al llegar commits a main.
+# Tests en cada push, y release automática al llegar commits a main. Cada
+# lunes, además, tests y auditoría de dependencias aunque nadie haga push.
 #
 # En main, la versión nueva se calcula con los mensajes de Conventional
 # Commits (ver .github/scripts/next-version.sh): feat → minor, fix → patch,
@@ -13,6 +14,12 @@ on:
     branches: ["**"]
   # Botón "Run workflow" en la pestaña Actions, para lanzarlo a mano.
   workflow_dispatch:
+  # Cada lunes a las 8:00 UTC, sobre main: npm audit avisa de
+  # vulnerabilidades publicadas desde el último push. Sin package-lock.json,
+  # Dependabot solo ve las dependencias directas de package.json; npm audit
+  # revisa también las que llegan dentro de otras.
+  schedule:
+    - cron: "0 8 * * 1"
 
 # Por defecto, el token de cada job solo puede leer el repositorio. El job
 # release pide escritura por su cuenta, y eso sustituye a esto solo para él.
@@ -78,13 +85,21 @@ jobs:
         run: npm install
       - name: Comparar con THIRD_PARTY_NOTICES.md
         run: bash .github/scripts/check-deps.sh
+      # Falla si alguna dependencia, directa o indirecta, tiene una
+      # vulnerabilidad conocida. Incluye las de desarrollo: no van en la
+      # Release, pero corren al compilar.
+      - name: Vulnerabilidades (npm audit)
+        working-directory: plugin
+        run: npm audit
 
   version:
     name: Calcular la versión
     # Solo en main, y solo si los tests pasaron en los tres sistemas y todas
     # las dependencias están admitidas.
     needs: [test, deps]
-    if: github.ref == 'refs/heads/main'
+    # La ejecución semanal también corre sobre main, pero solo revisa: no
+    # publica nada.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.next.outputs.version }}
