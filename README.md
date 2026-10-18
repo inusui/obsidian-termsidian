@@ -6,6 +6,8 @@ Terminal real en la barra lateral derecha de Obsidian, con el shell de tu sistem
 
 Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`, abre una terminal del sistema (ConPTY en Windows, PTY en macOS y Linux), y el plugin la dibuja con [xterm.js](https://xtermjs.org/).
 
+*Termsidian es un proyecto independiente, sin afiliación ni respaldo de Obsidian.*
+
 ## Sistemas probados
 
 | Sistema | Instalación de Obsidian | Estado |
