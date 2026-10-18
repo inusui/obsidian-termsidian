@@ -1,0 +1,26 @@
+name: Cerrar pull requests
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comentar y cerrar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          body="Thanks for the interest, but this repository doesn't accept pull requests: it's maintained by a single person. If you'd like to propose this change, please open an [issue](https://github.com/$REPO/issues) describing it and I'll consider it myself.
+
+          ---
+
+          Gracias por el interés, pero este repositorio no acepta pull requests: lo mantiene una sola persona. Si quieres proponer este cambio, abre un [issue](https://github.com/$REPO/issues) describiéndolo y lo valoro yo mismo."
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$body"
+          gh pr close "$PR_NUMBER" --repo "$REPO"

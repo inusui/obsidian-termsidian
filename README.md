@@ -438,6 +438,10 @@ obsidian-termsidian/
 
 `helper/dist/`, `plugin/build/`, `plugin/node_modules/` y `plugin/package-lock.json` se generan al compilar o al hacer `npm install` y no se suben al repositorio. `go.sum` sí se sube.
 
+## Contribuir
+
+Termsidian lo mantiene una sola persona. Las sugerencias e informes de fallos son bienvenidos como [issue](https://github.com/inusui/obsidian-termsidian/issues), pero **no se aceptan pull requests**: cualquier PR se cierra automáticamente con un comentario que enlaza aquí. Si quieres proponer un cambio, abre un issue describiéndolo.
+
 ## Seguridad
 
 Si encuentras una vulnerabilidad, no abras un issue público: repórtala en privado como explica [SECURITY.md](SECURITY.md).
