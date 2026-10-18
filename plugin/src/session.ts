@@ -50,10 +50,6 @@ export class HelperSession {
     this.proc = spawn(opts.helperPath, args, { windowsHide: true });
 
     this.proc.stdout.on("data", (chunk: Buffer) => this.onChunk(chunk));
-    // stderr del helper son logs de depuración (consola de Obsidian: Ctrl+Shift+I).
-    this.proc.stderr.on("data", (chunk: Buffer) => {
-      console.debug("[termsidian-pty]", chunk.toString().trimEnd());
-    });
     // Escribir a un helper que ya salió da error; de eso avisa "close".
     this.proc.stdin.on("error", () => {});
     this.proc.on("error", (err) => this.fail(`no se pudo lanzar el helper: ${err.message}`));
