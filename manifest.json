@@ -1,7 +1,7 @@
 {
   "id": "termsidian",
   "name": "System Terminal",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "minAppVersion": "1.7.2",
   "description": "Open a real terminal in the right sidebar, running your system shell on Windows, macOS and Linux.",
   "author": "inusui",
