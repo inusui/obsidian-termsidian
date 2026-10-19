@@ -217,6 +217,9 @@ jobs:
           if ! git diff --quiet manifest.json plugin/package.json; then
             git commit -m "chore(release): $VERSION [skip ci]" manifest.json plugin/package.json
             git push "$remote" HEAD:main
+            # Dev arranca del mismo commit: así sigue con el número de
+            # versión publicado y no pide protección de rama como main.
+            git push "$remote" HEAD:Dev
           fi
           git tag "$VERSION"
           git push "$remote" "$VERSION"
