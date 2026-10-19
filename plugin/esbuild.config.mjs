@@ -1,34 +1,24 @@
 // Genera build/, la carpeta que se copia al vault:
-//   main.js        (src/main.ts y todo lo que importa, en un solo archivo)
+//   main.js        (src/main.ts y todo lo que importa, en un solo archivo;
+//                  lleva dentro los 6 binarios del helper, en base64 — ver
+//                  generate-helper-binaries.mjs y ensureHelper en main.ts)
 //   styles.css     (src/styles.css + el CSS de xterm)
 //   manifest.json  (el de la raíz del repositorio)
 //   LICENSE, THIRD_PARTY_NOTICES.md  (licencias: la nuestra y las de lo que
-//                  va dentro de main.js, styles.css y bin/)
-//   bin/           (los binarios de helper/dist, generados con build.sh)
+//                  va dentro de main.js y styles.css)
 //
 // Uso: node esbuild.config.mjs [--watch]
 
 import * as esbuild from "esbuild";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, rmSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
 const outdir = "build";
-const helperDist = "../helper/dist";
 
 rmSync(outdir, { recursive: true, force: true });
-mkdirSync(`${outdir}/bin`, { recursive: true });
+mkdirSync(outdir, { recursive: true });
 for (const file of ["manifest.json", "LICENSE", "THIRD_PARTY_NOTICES.md"]) {
   cpSync(`../${file}`, `${outdir}/${file}`);
-}
-
-if (existsSync(helperDist)) {
-  for (const file of readdirSync(helperDist)) {
-    if (file.startsWith("termsidian-pty-")) {
-      cpSync(`${helperDist}/${file}`, `${outdir}/bin/${file}`);
-    }
-  }
-} else {
-  console.warn("aviso: no existe helper/dist; compila el helper con helper/build.sh");
 }
 
 const common = { bundle: true, logLevel: "info", minify: !watch };

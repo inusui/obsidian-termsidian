@@ -6,7 +6,7 @@ Terminal real en la barra lateral derecha de Obsidian, con el shell de tu sistem
 
 Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`, abre una terminal del sistema (ConPTY en Windows, PTY en macOS y Linux), y el plugin la dibuja con [xterm.js](https://xtermjs.org/).
 
-*Termsidian es un proyecto independiente, sin afiliación ni respaldo de Obsidian.*
+*System Terminal es un proyecto independiente, sin afiliación ni respaldo de Obsidian.*
 
 (Read in English: [README.md](README.md))
 
@@ -28,7 +28,7 @@ Sin Python y sin node-pty: un programa pequeño escrito en Go, `termsidian-pty`,
 
 ## Uso
 
-Abre la terminal con el icono de terminal de la barra izquierda, o con `Ctrl+P` → **Termsidian: Abrir terminal**.
+Abre la terminal con el icono de terminal de la barra izquierda, o con `Ctrl+P` → **System Terminal: Abrir terminal**.
 
 El shell es PowerShell en Windows, y en macOS y Linux el de la variable `$SHELL`. Si Obsidian está instalado con Flatpak, hace falta un paso más: ve a [Linux con Flatpak](#linux-con-flatpak).
 
@@ -44,9 +44,17 @@ Al cerrar el panel se cierran el shell y todo lo que corría dentro de él. Los 
 
 **Requisitos:** Obsidian de escritorio 1.7.2 o superior, con los complementos de la comunidad activados (modo restringido desactivado).
 
+### Desde Complementos de la comunidad
+
+Ve a **Ajustes → Complementos de la comunidad → Explorar**, busca **System Terminal**, y pulsa **Instalar** y después **Activar**.
+
+El helper para tu sistema (Windows, macOS o Linux, Intel o ARM) se escribe a disco la primera vez que abres una terminal — viaja embebido dentro de `main.js`, porque Obsidian solo descarga `main.js`, `manifest.json` y `styles.css` para los complementos instalados así.
+
+### Instalación manual
+
 `<tu-vault>` es la carpeta que contiene `.obsidian`. En Git Bash, las rutas de Windows se escriben con barras normales y la unidad en minúscula: `C:\Users\Ana\Notas` se escribe `/c/Users/Ana/Notas`.
 
-1. En la página de [Releases](https://github.com/inusui/obsidian-termsidian/releases), descarga `termsidian-<versión>.zip`. Trae el plugin y el helper para los 6 sistemas.
+1. En la página de [Releases](https://github.com/inusui/obsidian-termsidian/releases), descarga `termsidian-<versión>.zip`.
 2. Descomprímelo dentro de `<tu-vault>/.obsidian/plugins/`. En Windows, basta con clic derecho → **Extraer todo**. Tiene que quedar una carpeta `termsidian` dentro de `plugins`.
 
    Con Git Bash, macOS o Linux (cambia la versión por la que quieras):
@@ -57,9 +65,9 @@ Al cerrar el panel se cierran el shell y todo lo que corría dentro de él. Los 
    unzip -o termsidian-0.1.0.zip && rm termsidian-0.1.0.zip
    ```
 
-3. En Obsidian, ve a **Ajustes → Complementos de la comunidad**, pulsa el botón de recargar junto a "Complementos instalados" y activa **Termsidian**.
+3. En Obsidian, ve a **Ajustes → Complementos de la comunidad**, pulsa el botón de recargar junto a "Complementos instalados" y activa **System Terminal**.
 
-La carpeta del plugin queda así:
+La carpeta del plugin queda así una vez que abriste una terminal al menos una vez (`bin/` solo tiene el binario del sistema en el que la abriste):
 
 ```
 <tu-vault>/.obsidian/plugins/termsidian/
@@ -69,29 +77,22 @@ La carpeta del plugin queda así:
  ├─ LICENSE
  ├─ THIRD_PARTY_NOTICES.md
  └─ bin/
-     ├─ termsidian-pty-windows-amd64.exe
-     ├─ termsidian-pty-windows-arm64.exe
-     ├─ termsidian-pty-darwin-amd64
-     ├─ termsidian-pty-darwin-arm64
-     ├─ termsidian-pty-linux-amd64
-     └─ termsidian-pty-linux-arm64
+     └─ termsidian-pty-<tu sistema>-<tu arquitectura>
 ```
 
 ¿Prefieres compilarlo tú en vez de descargar la Release? Mira [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ### Actualizar
 
-1. Desactiva el plugin, o cierra Obsidian. Windows no deja reemplazar un `.exe` que está en uso.
-2. Instala la versión nueva descomprimiendo la Release nueva en el mismo sitio. Los archivos se sobrescriben.
-3. Activa el plugin otra vez.
+Desde Complementos de la comunidad, las actualizaciones se instalan como las de cualquier otro complemento, desde **Ajustes → Complementos de la comunidad**. Instalado a mano, reemplaza los archivos con un `termsidian-<versión>.zip` nuevo (pasos de arriba) — desactiva el plugin o cierra Obsidian antes, porque Windows no deja reemplazar un `.exe` que está en uso.
 
-> **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** la carpeta `bin/` también se sincroniza, así que el plugin funciona en todos tus equipos, sean Windows, macOS o Linux.
+> **Vault sincronizado (Nextcloud, Dropbox, OneDrive…):** `bin/` también se sincroniza, así que, una vez que abriste una terminal en cada uno de tus equipos, el plugin funciona en todos, sean Windows, macOS o Linux.
 
 ### Linux con Flatpak
 
 Si instalaste Obsidian desde Flathub, Discover o GNOME Software, corre dentro de un sandbox de Flatpak que tiene su propio sistema. Sin este paso, la terminal se abre dentro de ese sandbox: muestra un prompt como `sh-5.3$` y no encuentra tus programas.
 
-Termsidian detecta Flatpak y abre el shell de tu sistema real con `flatpak-spawn --host`. Para eso, Obsidian necesita un permiso que no trae por defecto. Ejecútalo una sola vez en una terminal normal, fuera de Obsidian:
+System Terminal detecta Flatpak y abre el shell de tu sistema real con `flatpak-spawn --host`. Para eso, Obsidian necesita un permiso que no trae por defecto. Ejecútalo una sola vez en una terminal normal, fuera de Obsidian:
 
 ```bash
 flatpak override --user --talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
@@ -109,9 +110,9 @@ La terminal empieza en la carpeta del vault. Si esa carpeta no existe fuera del 
 
 ## Problemas frecuentes
 
-**La terminal muestra "[Termsidian] No encuentro el helper en …"**
+**La terminal muestra "No hay un helper para tu sistema (…)"**
 
-Falta el binario de tu sistema en `bin/`. Vuelve a instalar desde una Release ([Instalación en tu vault](#instalación-en-tu-vault)).
+Tu sistema o arquitectura de CPU no es uno de los 6 admitidos (ver [¿Por qué un helper en Go?](#por-qué-un-helper-en-go)), o `main.js` se corrompió. Vuelve a instalar desde una Release ([Instalación en tu vault](#instalación-en-tu-vault)).
 
 **En macOS o Linux, el helper no arranca por falta de permisos**
 
@@ -139,7 +140,7 @@ Más detalle de cómo se comunican el plugin y el helper en [DEVELOPMENT.md](DEV
 
 ## Contribuir
 
-Termsidian lo mantiene una sola persona. Las sugerencias e informes de fallos son bienvenidos como [issue](https://github.com/inusui/obsidian-termsidian/issues), pero **no se aceptan pull requests**: cualquier PR se cierra automáticamente con un comentario que enlaza aquí. Si quieres proponer un cambio, abre un issue describiéndolo.
+System Terminal lo mantiene una sola persona. Las sugerencias e informes de fallos son bienvenidos como [issue](https://github.com/inusui/obsidian-termsidian/issues), pero **no se aceptan pull requests**: cualquier PR se cierra automáticamente con un comentario que enlaza aquí. Si quieres proponer un cambio, abre un issue describiéndolo.
 
 ## Seguridad
 

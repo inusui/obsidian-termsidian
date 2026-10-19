@@ -1,5 +1,7 @@
-import { join } from "node:path";
+import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { FileSystemAdapter, Plugin, type WorkspaceLeaf } from "obsidian";
+import { HELPER_BINARIES } from "./helper-binaries.generated.ts";
 import { TerminalView, VIEW_TYPE_TERMINAL } from "./view.ts";
 
 // Nombres de sistema y arquitectura de Node → los de Go (GOOS/GOARCH), que
@@ -44,5 +46,28 @@ export default class TermsidianPlugin extends Plugin {
     const arch = GO_ARCH[process.arch] ?? process.arch;
     const ext = process.platform === "win32" ? ".exe" : "";
     return join(this.vaultPath(), this.manifest.dir ?? "", "bin", `termsidian-pty-${os}-${arch}${ext}`);
+  }
+
+  // El listado de Community Plugins de Obsidian solo descarga main.js,
+  // manifest.json y styles.css: bin/ no llega instalado. main.js lleva los 6
+  // binarios del helper embebidos (en base64, generados por
+  // generate-helper-binaries.mjs); la primera vez que hace falta el helper,
+  // lo escribimos a disco en la ruta de siempre y lo reusamos de ahí en
+  // adelante. Si ya existe (instalación manual desde el .zip, o una llamada
+  // anterior), no lo tocamos: en Windows no se puede sobrescribir un .exe en
+  // uso.
+  ensureHelper(): string | null {
+    const path = this.helperPath();
+    if (existsSync(path)) return path;
+
+    const os = GO_OS[process.platform] ?? process.platform;
+    const arch = GO_ARCH[process.arch] ?? process.arch;
+    const base64 = HELPER_BINARIES[`${os}-${arch}`];
+    if (!base64) return null;
+
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, Buffer.from(base64, "base64"));
+    if (process.platform !== "win32") chmodSync(path, 0o755);
+    return path;
   }
 }

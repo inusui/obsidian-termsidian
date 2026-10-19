@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { ItemView, type WorkspaceLeaf } from "obsidian";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal, type ITheme } from "@xterm/xterm";
@@ -92,9 +91,9 @@ export class TerminalView extends ItemView {
     const term = this.term;
     if (!term) return;
 
-    const helperPath = this.plugin.helperPath();
-    if (!existsSync(helperPath)) {
-      this.printError(`No encuentro el helper en ${helperPath}`);
+    const helperPath = this.plugin.ensureHelper();
+    if (!helperPath) {
+      this.printError(`No hay un helper para tu sistema (${process.platform}/${process.arch}).`);
       return;
     }
 
@@ -129,7 +128,7 @@ export class TerminalView extends ItemView {
 
   private printError(message: string): void {
     // \x1b[31m ... \x1b[0m: secuencia ANSI para texto rojo.
-    this.term?.write(`\r\n\x1b[31m[Termsidian] ${message}\x1b[0m\r\n`);
+    this.term?.write(`\r\n\x1b[31m[System Terminal] ${message}\x1b[0m\r\n`);
   }
 
   private fit(): void {

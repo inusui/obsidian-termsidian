@@ -6,7 +6,7 @@ A real terminal in Obsidian's right sidebar, running your system shell (PowerShe
 
 No Python and no node-pty: a small Go program, `termsidian-pty`, opens a real system terminal (ConPTY on Windows, PTY on macOS and Linux), and the plugin renders it with [xterm.js](https://xtermjs.org/).
 
-*Termsidian is an independent project, not affiliated with or endorsed by Obsidian.*
+*System Terminal is an independent project, not affiliated with or endorsed by Obsidian.*
 
 (Léeme en español: [README.es.md](README.es.md))
 
@@ -28,7 +28,7 @@ No Python and no node-pty: a small Go program, `termsidian-pty`, opens a real sy
 
 ## Usage
 
-Open the terminal with the terminal icon in the left ribbon, or `Ctrl+P` → **Termsidian: Open terminal**.
+Open the terminal with the terminal icon in the left ribbon, or `Ctrl+P` → **System Terminal: Open terminal**.
 
 The shell is PowerShell on Windows, and on macOS and Linux whatever `$SHELL` points to. If Obsidian is installed via Flatpak, there's one extra step: see [Linux on Flatpak](#linux-on-flatpak).
 
@@ -44,9 +44,17 @@ Closing the panel kills the shell and everything running inside it. Programs wit
 
 **Requirements:** Obsidian desktop 1.7.2 or later, with community plugins enabled (restricted mode off).
 
+### From Community Plugins
+
+Go to **Settings → Community plugins → Browse**, search for **System Terminal**, and click **Install**, then **Enable**.
+
+The helper for your system (Windows, macOS or Linux, Intel or ARM) is written to disk the first time you open a terminal — it ships embedded inside `main.js`, since Obsidian only downloads `main.js`, `manifest.json` and `styles.css` for plugins installed this way.
+
+### Manual install
+
 `<your-vault>` is the folder that contains `.obsidian`.
 
-1. On the [Releases](https://github.com/inusui/obsidian-termsidian/releases) page, download `termsidian-<version>.zip`. It bundles the plugin and the helper for all 6 supported systems.
+1. On the [Releases](https://github.com/inusui/obsidian-termsidian/releases) page, download `termsidian-<version>.zip`.
 2. Unzip it inside `<your-vault>/.obsidian/plugins/`. On Windows, right-click → **Extract All**. You should end up with a `termsidian` folder inside `plugins`.
 
    With Git Bash, macOS, or Linux (swap in the version you want):
@@ -57,9 +65,9 @@ Closing the panel kills the shell and everything running inside it. Programs wit
    unzip -o termsidian-0.1.0.zip && rm termsidian-0.1.0.zip
    ```
 
-3. In Obsidian, go to **Settings → Community plugins**, click the reload button next to "Installed plugins", and enable **Termsidian**.
+3. In Obsidian, go to **Settings → Community plugins**, click the reload button next to "Installed plugins", and enable **System Terminal**.
 
-The plugin folder ends up looking like this:
+The plugin folder looks like this once you've opened a terminal at least once (`bin/` only has the one binary for the system you opened it on):
 
 ```
 <your-vault>/.obsidian/plugins/termsidian/
@@ -69,29 +77,22 @@ The plugin folder ends up looking like this:
  ├─ LICENSE
  ├─ THIRD_PARTY_NOTICES.md
  └─ bin/
-     ├─ termsidian-pty-windows-amd64.exe
-     ├─ termsidian-pty-windows-arm64.exe
-     ├─ termsidian-pty-darwin-amd64
-     ├─ termsidian-pty-darwin-arm64
-     ├─ termsidian-pty-linux-amd64
-     └─ termsidian-pty-linux-arm64
+     └─ termsidian-pty-<your system>-<your architecture>
 ```
 
 Prefer to build it yourself instead of downloading the release? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ### Updating
 
-1. Disable the plugin, or close Obsidian. Windows won't let you replace a `.exe` that's in use.
-2. Install the new version by unzipping the new release over the same folder. Files get overwritten.
-3. Enable the plugin again.
+Through Community Plugins, updates install like any other plugin, from **Settings → Community plugins**. Installed manually, replace the files with a new `termsidian-<version>.zip` (steps above) — disable the plugin or close Obsidian first, since Windows won't let you replace a `.exe` that's in use.
 
-> **Synced vault (Nextcloud, Dropbox, OneDrive…):** the `bin/` folder syncs too, so the plugin works on all your machines, whether Windows, macOS, or Linux.
+> **Synced vault (Nextcloud, Dropbox, OneDrive…):** `bin/` syncs too, so once you've opened a terminal on each of your machines, the plugin works on all of them, whether Windows, macOS, or Linux.
 
 ### Linux on Flatpak
 
 If you installed Obsidian from Flathub, Discover, or GNOME Software, it runs inside a Flatpak sandbox with its own filesystem. Without this step, the terminal opens inside that sandbox: it shows a prompt like `sh-5.3$` and can't find your programs.
 
-Termsidian detects Flatpak and opens your real system shell with `flatpak-spawn --host`. For that, Obsidian needs a permission it doesn't have by default. Run this once in a regular terminal, outside Obsidian:
+System Terminal detects Flatpak and opens your real system shell with `flatpak-spawn --host`. For that, Obsidian needs a permission it doesn't have by default. Run this once in a regular terminal, outside Obsidian:
 
 ```bash
 flatpak override --user --talk-name=org.freedesktop.Flatpak md.obsidian.Obsidian
@@ -109,9 +110,9 @@ The terminal starts in the vault folder. If that folder doesn't exist outside th
 
 ## Troubleshooting
 
-**The terminal shows "[Termsidian] Can't find the helper at …"**
+**The terminal shows "No hay un helper para tu sistema (…)"**
 
-The binary for your system is missing from `bin/`. Reinstall from a release ([Installing in your vault](#installing-in-your-vault)).
+Your system or CPU architecture isn't one of the 6 supported ones (see [Why a Go helper?](#why-a-go-helper)), or `main.js` got corrupted. Reinstall from a release ([Installing in your vault](#installing-in-your-vault)).
 
 **On macOS or Linux, the helper won't start due to a permissions error**
 
@@ -139,7 +140,7 @@ More detail on how the plugin and helper talk to each other in [DEVELOPMENT.md](
 
 ## Contributing
 
-Termsidian is maintained by a single person. Suggestions and bug reports are welcome as an [issue](https://github.com/inusui/obsidian-termsidian/issues), but **pull requests aren't accepted**: any PR gets closed automatically with a comment linking here. If you want to propose a change, open an issue describing it.
+System Terminal is maintained by a single person. Suggestions and bug reports are welcome as an [issue](https://github.com/inusui/obsidian-termsidian/issues), but **pull requests aren't accepted**: any PR gets closed automatically with a comment linking here. If you want to propose a change, open an issue describing it.
 
 ## Security
 
