@@ -3,7 +3,7 @@
   "name": "Termsidian",
   "version": "0.2.0",
   "minAppVersion": "1.7.2",
-  "description": "Real terminal in the right sidebar, running your system shell. Windows, macOS and Linux.",
+  "description": "Open a real terminal in the right sidebar, running your system shell on Windows, macOS and Linux.",
   "author": "inusui",
   "authorUrl": "https://github.com/inusui",
   "isDesktopOnly": true

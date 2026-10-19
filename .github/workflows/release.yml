@@ -4,8 +4,8 @@
 # En main, la versión nueva se calcula con los mensajes de Conventional
 # Commits (ver .github/scripts/next-version.sh): feat → minor, fix → patch,
 # tipo! o BREAKING CHANGE → major. Solo docs/chore/ci → no se publica nada.
-# El pipeline guarda la versión en manifest.json, crea la etiqueta y publica
-# la Release.
+# El pipeline guarda la versión en manifest.json y en plugin/package.json
+# (deben coincidir siempre), crea la etiqueta y publica la Release.
 
 name: CI y release
 
@@ -144,15 +144,19 @@ jobs:
           node-version: 24
 
       # Primero en local: el plugin copia manifest.json al compilar, y tiene
-      # que llevar ya la versión nueva.
-      - name: Poner la versión en manifest.json
+      # que llevar ya la versión nueva. plugin/package.json se actualiza a la
+      # vez para que ambos archivos siempre coincidan.
+      - name: Poner la versión en manifest.json y package.json
         run: |
-          node -e '
-            const fs = require("fs");
-            const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
-            manifest.version = process.env.VERSION;
-            fs.writeFileSync("manifest.json", JSON.stringify(manifest, null, 2) + "\n");
-          '
+          for file in manifest.json plugin/package.json; do
+            FILE="$file" node -e '
+              const fs = require("fs");
+              const file = process.env.FILE;
+              const json = JSON.parse(fs.readFileSync(file, "utf8"));
+              json.version = process.env.VERSION;
+              fs.writeFileSync(file, JSON.stringify(json, null, 2) + "\n");
+            '
+          done
 
       - name: Compilar el helper para los 6 sistemas
         env:
@@ -210,8 +214,8 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet manifest.json; then
-            git commit -m "chore(release): $VERSION [skip ci]" manifest.json
+          if ! git diff --quiet manifest.json plugin/package.json; then
+            git commit -m "chore(release): $VERSION [skip ci]" manifest.json plugin/package.json
             git push "$remote" HEAD:main
           fi
           git tag "$VERSION"
