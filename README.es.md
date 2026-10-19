@@ -1,4 +1,4 @@
-# Termsidian
+# System Terminal
 
 [![CI y release](https://github.com/inusui/obsidian-termsidian/actions/workflows/release.yml/badge.svg)](https://github.com/inusui/obsidian-termsidian/actions/workflows/release.yml)
 
