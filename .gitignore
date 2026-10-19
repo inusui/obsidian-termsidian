@@ -10,4 +10,5 @@ helper/dist/
 # Plugin: dependencias y resultado de la compilación
 plugin/node_modules/
 plugin/build/
+plugin/src/helper-binaries.generated.ts
 **/package-lock.json

@@ -79,8 +79,8 @@ export class HelperSession {
   close(): void {
     this.finished = true;
     this.proc.stdin.end();
-    const timer = setTimeout(() => this.proc.kill(), KILL_TIMEOUT_MS);
-    this.proc.once("close", () => clearTimeout(timer));
+    const timer = window.setTimeout(() => this.proc.kill(), KILL_TIMEOUT_MS);
+    this.proc.once("close", () => window.clearTimeout(timer));
   }
 
   private send(frame: Uint8Array): void {

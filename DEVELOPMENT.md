@@ -1,6 +1,6 @@
 # Desarrollo
 
-Notas de mantenimiento para mí mismo: cómo compilar, probar y publicar Termsidian. No es una invitación a contribuir — ver la sección [Contribuir](README.es.md#contribuir) del README: no se aceptan pull requests.
+Notas de mantenimiento para mí mismo: cómo compilar, probar y publicar System Terminal. No es una invitación a contribuir — ver la sección [Contribuir](README.es.md#contribuir) del README: no se aceptan pull requests.
 
 ## Requisitos
 
@@ -24,9 +24,9 @@ Todos los comandos de este documento son para Git Bash en Windows, o para la ter
    cp -r plugin/build/. "$dest/"
    ```
 
-3. En Obsidian, ve a **Ajustes → Complementos de la comunidad**, pulsa el botón de recargar junto a "Complementos instalados" y activa **Termsidian**.
+3. En Obsidian, ve a **Ajustes → Complementos de la comunidad**, pulsa el botón de recargar junto a "Complementos instalados" y activa **System Terminal**.
 
-A diferencia de instalar desde una Release, este build solo trae el binario de tu propio sistema (no los 6). Para un vault sincronizado entre varios sistemas, instala desde una Release en su lugar.
+A diferencia de instalar desde una Release, `main.js` solo lleva dentro el binario de tu propio sistema (no los 6), porque solo compilaste ese. Para un vault sincronizado entre varios sistemas, instala desde una Release en su lugar.
 
 ### 1. El helper (Go)
 
@@ -77,6 +77,8 @@ El plugin busca un binario llamado `termsidian-pty-<sistema>-<arquitectura>`, co
 - `<sistema>`: `windows`, `darwin` (macOS) o `linux`.
 - `<arquitectura>`: `amd64` (Intel/AMD) o `arm64` (Apple Silicon y otros procesadores ARM).
 
+Al compilar el plugin, estos binarios se embeben en base64 dentro de `main.js` (ver `generate-helper-binaries.mjs` y `ensureHelper` en `plugin/src/main.ts`). La primera vez que se abre una terminal, el plugin escribe a disco el binario de tu sistema en `bin/` y lo reusa de ahí en adelante. Así funciona igual si lo instalaste a mano desde el `.zip` o si lo instalaste desde el listado de Community Plugins de Obsidian, que solo descarga `main.js`, `manifest.json` y `styles.css`.
+
 ### 2. El plugin (TypeScript)
 
 ```bash
@@ -87,9 +89,9 @@ npm run build
 
 `npm run build` hace tres cosas:
 
-1. Revisa los tipos con `tsc`.
-2. Empaqueta el código con esbuild.
-3. Crea `plugin/build/` con `main.js`, `manifest.json`, `styles.css` y las licencias (`LICENSE` y `THIRD_PARTY_NOTICES.md`), y copia los binarios de `helper/dist/` a `bin/`. Por eso hay que compilar el helper primero.
+1. Embebe en base64 los binarios de `helper/dist/` en `src/helper-binaries.generated.ts` (`generate-helper-binaries.mjs`). Por eso hay que compilar el helper primero.
+2. Revisa los tipos con `tsc`.
+3. Empaqueta el código con esbuild y crea `plugin/build/` con `main.js` (con los binarios ya dentro), `manifest.json`, `styles.css` y las licencias (`LICENSE` y `THIRD_PARTY_NOTICES.md`).
 
 Con `npm run dev`, el plugin se recompila cada vez que guardas un archivo. Después hay que copiarlo al vault igualmente.
 
@@ -136,10 +138,10 @@ GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)) 
 | Archivo | Qué es |
 |---|---|
 | `termsidian-<versión>.zip` | La carpeta del plugin completa, lista para descomprimir en `.obsidian/plugins/` |
-| `main.js`, `manifest.json`, `styles.css` | El plugin, sin el helper |
-| `termsidian-pty-<sistema>-<arquitectura>` | El helper para cada sistema |
-| `checksums.txt` | Hash SHA-256 de cada binario del helper |
-| `LICENSE`, `THIRD_PARTY_NOTICES.md` | La licencia de Termsidian y las de las dependencias que van dentro |
+| `main.js`, `manifest.json`, `styles.css` | El plugin — lo único que descarga Obsidian al instalar desde Community Plugins. El helper para los 6 sistemas va embebido dentro de `main.js` |
+| `LICENSE`, `THIRD_PARTY_NOTICES.md` | La licencia de System Terminal y las de las dependencias que van dentro |
+
+Además, `main.js` y `styles.css` llevan una [attestation de GitHub](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) que certifica que salieron de este repositorio y este workflow (`gh attestation verify`).
 
 Los binarios de una Release los compila siempre GitHub, nunca un equipo personal.
 
@@ -316,9 +318,10 @@ obsidian-termsidian/
  │   ├─ build.sh           compila los binarios en helper/dist/
  │   └─ go.mod, go.sum     dependencias y sus hashes
  └─ plugin/                el plugin, en TypeScript
-     ├─ src/               main.ts, view.ts, session.ts, protocol.ts, styles.css y tests
-     ├─ esbuild.config.mjs genera plugin/build/
+     ├─ src/                      main.ts, view.ts, session.ts, protocol.ts, styles.css y tests
+     ├─ generate-helper-binaries.mjs  embebe helper/dist/ en src/helper-binaries.generated.ts
+     ├─ esbuild.config.mjs        genera plugin/build/
      └─ package.json
 ```
 
-`helper/dist/`, `plugin/build/`, `plugin/node_modules/` y `plugin/package-lock.json` se generan al compilar o al hacer `npm install` y no se suben al repositorio. `go.sum` sí se sube.
+`helper/dist/`, `plugin/build/`, `plugin/node_modules/`, `plugin/src/helper-binaries.generated.ts` y `plugin/package-lock.json` se generan al compilar o al hacer `npm install` y no se suben al repositorio. `go.sum` sí se sube.

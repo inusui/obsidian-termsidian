@@ -16,7 +16,7 @@ Report it privately from the repository's **Security** tab, using the **Report a
 
 If possible, include:
 
-- the Termsidian version and your operating system;
+- the System Terminal version and your operating system;
 - what happens and what it allows an attacker to do;
 - steps to reproduce it.
 
@@ -30,7 +30,7 @@ You can write in English or Spanish.
 
 *Si puedes, incluye:*
 
-- *la versión de Termsidian y tu sistema operativo;*
+- *la versión de System Terminal y tu sistema operativo;*
 - *qué ocurre y qué le permite hacer a un atacante;*
 - *los pasos para reproducirlo.*
 
@@ -38,7 +38,7 @@ You can write in English or Spanish.
 
 ## What to Expect
 
-Termsidian is a personal project maintained by a single person, so there are no guaranteed timelines. Even so, vulnerabilities come before any other task:
+System Terminal is a personal project maintained by a single person, so there are no guaranteed timelines. Even so, vulnerabilities come before any other task:
 
 1. I'll confirm that I received the report.
 2. If the vulnerability is confirmed, I'll prepare the fix and publish a new version.
@@ -46,7 +46,7 @@ Termsidian is a personal project maintained by a single person, so there are no 
 
 *Qué esperar*
 
-*Termsidian es un proyecto personal que mantiene una sola persona, así que no hay plazos garantizados. Aun así, las vulnerabilidades van antes que cualquier otra tarea:*
+*System Terminal es un proyecto personal que mantiene una sola persona, así que no hay plazos garantizados. Aun así, las vulnerabilidades van antes que cualquier otra tarea:*
 
 1. *Te confirmaré que recibí el reporte.*
 2. *Si la vulnerabilidad se confirma, prepararé el arreglo y publicaré una versión nueva.*
@@ -54,7 +54,7 @@ Termsidian is a personal project maintained by a single person, so there are no 
 
 ## What Counts as a Vulnerability
 
-Termsidian opens a terminal with your shell and your permissions. Being able to run any command from it is its function, not a vulnerability.
+System Terminal opens a terminal with your shell and your permissions. Being able to run any command from it is its function, not a vulnerability.
 
 These do count, for example:
 
@@ -66,7 +66,7 @@ If the vulnerability is in a dependency (xterm.js or a Go module) and it's alrea
 
 *Qué cuenta como vulnerabilidad*
 
-*Termsidian abre una terminal con tu shell y con tus permisos. Poder ejecutar cualquier comando desde ella es su función, no una vulnerabilidad.*
+*System Terminal abre una terminal con tu shell y con tus permisos. Poder ejecutar cualquier comando desde ella es su función, no una vulnerabilidad.*
 
 *Sí lo son, por ejemplo:*
 

@@ -125,6 +125,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # para crear la Release (el commit y la etiqueta usan la deploy key)
+      id-token: write # para firmar las attestations de main.js y styles.css
+      attestations: write # para subirlas a la Release
     # Si llegan dos merges seguidos, las releases se hacen una detrás de otra.
     concurrency:
       group: release
@@ -163,13 +165,26 @@ jobs:
           TARGETS: windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
         run: bash helper/build.sh "$VERSION"
 
-      # Genera plugin/build/ con main.js, manifest.json, styles.css, las
-      # licencias (LICENSE y THIRD_PARTY_NOTICES.md) y los 6 binarios en bin/.
+      # Genera plugin/build/ con main.js, manifest.json, styles.css y las
+      # licencias (LICENSE y THIRD_PARTY_NOTICES.md). main.js lleva dentro,
+      # en base64, los 6 binarios del helper: el plugin escribe a disco el
+      # que corresponda la primera vez que se abre una terminal (ver
+      # ensureHelper en plugin/src/main.ts), así que bin/ ya no hace falta
+      # en la Release ni en el .zip.
       - name: Compilar el plugin
         working-directory: plugin
         run: |
           npm install
           npm run build
+
+      # Verificables en GitHub: que main.js y styles.css salieron de este
+      # repositorio y este workflow, y no de otro lado.
+      - name: Attestations de main.js y styles.css
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            plugin/build/main.js
+            plugin/build/styles.css
 
       # Un zip con la carpeta del plugin lista para copiar a .obsidian/plugins/.
       - name: Empaquetar
@@ -238,6 +253,4 @@ jobs:
             plugin/build/styles.css \
             plugin/build/LICENSE \
             plugin/build/THIRD_PARTY_NOTICES.md \
-            helper/dist/termsidian-pty-* \
-            helper/dist/checksums.txt \
             "release/termsidian-$VERSION.zip"

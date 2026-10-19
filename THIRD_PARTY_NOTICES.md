@@ -1,6 +1,6 @@
 # Avisos de terceros
 
-Termsidian incluye código de otros proyectos de software libre. Sus licencias piden que su aviso de copyright acompañe a cada copia, por eso este archivo va dentro del zip de cada Release.
+System Terminal incluye código de otros proyectos de software libre. Sus licencias piden que su aviso de copyright acompañe a cada copia, por eso este archivo va dentro del zip de cada Release.
 
 - `main.js` y `styles.css` llevan dentro xterm.js y su addon `fit`.
 - Los binarios del helper (`termsidian-pty-*`) llevan la biblioteca estándar de Go y los módulos de Go de esta lista. `github.com/creack/pty` y `github.com/u-root/u-root` solo van en los de macOS y Linux.
